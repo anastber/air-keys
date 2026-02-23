@@ -1,0 +1,68 @@
+[project]
+name = "air-keys"
+version = "0.1.0"
+description = "Camera-based gesture instrument using computer vision and ML"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # Core ML & AI
+    "torch>=2.0.0",
+    "transformers>=4.30.0",
+    "peft>=0.4.0",
+    "sentence-transformers>=2.2.0",
+    
+    # Computer Vision
+    "mediapipe>=0.10.0",
+    "opencv-python>=4.8.0",
+    "numpy>=1.24.0",
+    
+    # Audio & MIDI
+    "pretty-midi>=0.2.9",
+    "pygame>=2.5.0",
+    
+    # API & Backend
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "websockets>=11.0.0",
+    
+    # RAG & Vector DB
+    "chromadb>=0.4.0",
+    "langchain>=0.1.0",
+    "langgraph>=0.0.40",
+    
+    # Data & MLOps
+    "mlflow>=2.5.0",
+    "dvc[s3]>=3.0.0",
+    
+    # Development
+    "pytest>=7.4.0",
+    "ruff>=0.0.280",
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyter>=1.0.0",
+    "ipykernel>=6.25.0",
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
