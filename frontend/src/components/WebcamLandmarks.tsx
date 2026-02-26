@@ -82,6 +82,10 @@ const WebcamLandmarks: React.FC = () => {
           if (data.error) {
             setError(data.error);
           } else {
+            // Debug: log the first few landmarks to see their values
+            if (data.hands.length > 0) {
+              console.log('First 3 landmarks:', data.hands[0].landmarks.slice(0, 3));
+            }
             setLandmarkData(data);
           }
         } catch (err) {
@@ -141,10 +145,9 @@ const WebcamLandmarks: React.FC = () => {
       
       
       hand.landmarks.forEach((landmark, index) => {
-        // Simple conversion - landmarks should be in range roughly [-0.5, 0.5] relative to wrist
-        // Convert to canvas coordinates by centering and scaling
-        const x = canvas.width / 2 + (landmark.x * canvas.width);
-        const y = canvas.height / 2 + (landmark.y * canvas.height);
+        // Convert normalized coordinates [0, 1] to canvas coordinates
+        const x = landmark.x * canvas.width;
+        const y = landmark.y * canvas.height;
         
         // Draw landmark point
         ctx.fillStyle = color;
@@ -164,8 +167,8 @@ const WebcamLandmarks: React.FC = () => {
       // Draw hand label
       if (hand.landmarks.length > 0) {
         const wrist = hand.landmarks[0];
-        const labelX = canvas.width / 2 + (wrist.x * canvas.width);
-        const labelY = canvas.height / 2 + (wrist.y * canvas.height) - 20;
+        const labelX = wrist.x * canvas.width;
+        const labelY = wrist.y * canvas.height - 20;
         
         ctx.fillStyle = color;
         ctx.font = '16px Arial';
@@ -200,10 +203,10 @@ const WebcamLandmarks: React.FC = () => {
         const startLandmark = hand.landmarks[start];
         const endLandmark = hand.landmarks[end];
 
-        const startX = canvas.width / 2 + (startLandmark.x * canvas.width);
-        const startY = canvas.height / 2 + (startLandmark.y * canvas.height);
-        const endX = canvas.width / 2 + (endLandmark.x * canvas.width);
-        const endY = canvas.height / 2 + (endLandmark.y * canvas.height);
+        const startX = startLandmark.x * canvas.width;
+        const startY = startLandmark.y * canvas.height;
+        const endX = endLandmark.x * canvas.width;
+        const endY = endLandmark.y * canvas.height;
 
         ctx.beginPath();
         ctx.moveTo(startX, startY);
