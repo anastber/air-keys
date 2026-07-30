@@ -26,7 +26,7 @@ dev: ## Start development servers (backend + frontend)
 	@echo "Use Ctrl+C to stop both servers"
 	@trap 'kill 0' SIGINT; \
 	(cd $(FRONTEND_SRC) && $(NPM) run dev) & \
-	(. .venv/bin/activate && uvicorn $(PYTHON_SRC).api.main:app --reload --host 0.0.0.0 --port 8000) & \
+	(. .venv/bin/activate && uvicorn $(PYTHON_SRC).api.main:app --reload --reload-dir $(PYTHON_SRC) --host 0.0.0.0 --port 8000) & \
 	wait
 
 lint: ## Run linting and formatting (Python + Node.js)
