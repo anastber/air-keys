@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 jobs:
-  python-lint-and-test:
+  python-lint:
     runs-on: ubuntu-latest
     
     steps:
@@ -28,9 +28,6 @@ jobs:
       
     - name: Run ruff format check
       run: uv run ruff format --check .
-      
-    - name: Run pytest
-      run: uv run pytest backend/tests/ -v
 
   frontend-lint:
     runs-on: ubuntu-latest

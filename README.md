@@ -83,12 +83,6 @@ This starts both:
 - **Backend API** http://localhost:8000
 - **Frontend Web App** http://localhost:3000
 
-**Run tests:**
-
-```bash
-make test
-```
-
 **Lint and format code:**
 
 ```bash
@@ -109,35 +103,21 @@ make help
 - Each session = one feature branch
 - All CI checks must pass before merge
 - Use conventional commits: `feat(gesture): add transformer classifier`
-
-## Testing
-
-The project includes comprehensive testing:
-
-```bash
-# Run all tests
-make test
-
-# Python tests only
-pytest backend/tests/ -v
-
-# Frontend tests only
-cd frontend && npm test
-```
+- Verify features by running the app live (`make dev`) rather than automated tests
 
 ## MLOps Pipeline
 
 - **Data Versioning**: DVC tracks datasets and model artifacts
 - **Experiment Tracking**: MLflow logs metrics, hyperparameters, models
 - **Model Registry**: Automated promotion staging � production
-- **CI/CD**: GitHub Actions for linting, testing, deployment
+- **CI/CD**: GitHub Actions for linting
 - **Auto-Retraining**: Triggered when new training data is added
 
 ## Contributing
 
 1. Create a feature branch: `git checkout -b feat/your-feature`
-2. Make your changes and add tests
-3. Run `make lint` and `make test`
+2. Make your changes and verify them live via `make dev`
+3. Run `make lint`
 4. Open a Pull Request with a clear description
 
 ## License

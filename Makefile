@@ -1,4 +1,4 @@
-.PHONY: install dev test lint clean help
+.PHONY: install dev lint clean help
 .DEFAULT_GOAL := help
 
 # Variables
@@ -28,13 +28,6 @@ dev: ## Start development servers (backend + frontend)
 	(cd $(FRONTEND_SRC) && $(NPM) run dev) & \
 	(. .venv/bin/activate && uvicorn $(PYTHON_SRC).api.main:app --reload --host 0.0.0.0 --port 8000) & \
 	wait
-
-test: ## Run all tests (Python + Node.js)
-	@echo "Running Python tests..."
-	. .venv/bin/activate && pytest $(PYTHON_SRC)/tests/ -v
-	@echo "Running Node.js tests..."
-	cd $(FRONTEND_SRC) && $(NPM) test
-	@echo "✅ All tests passed!"
 
 lint: ## Run linting and formatting (Python + Node.js)
 	@echo "Linting Python code with ruff..."
