@@ -9,13 +9,14 @@ import json
 import time
 from typing import Any
 
+import cv2
+import numpy as np
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.gesture.landmark_extractor import (
     LandmarkExtractor,
-    WebcamCapture,
     format_landmarks_for_json,
 )
 
@@ -74,55 +75,38 @@ async def root():
 @app.websocket("/ws/landmarks")
 async def websocket_landmarks(websocket: WebSocket):
     """
-    WebSocket endpoint for real-time hand landmark streaming.
-    
-    Streams normalized hand landmark coordinates as JSON at ~30fps.
-    Each message contains:
-    - timestamp: Unix timestamp of when landmarks were captured
+    WebSocket endpoint for real-time hand landmark extraction.
+
+    The client owns the camera (browser getUserMedia) and pushes JPEG-encoded
+    frames as binary messages. For each frame received, responds with the
+    extracted landmarks as JSON:
+    - timestamp: Unix timestamp of when landmarks were extracted
     - hands: List of detected hands, each with:
       - handedness: 'Left' or 'Right'
       - landmarks: List of 21 landmarks with x, y, z coordinates
     """
     await manager.connect(websocket)
 
-    # Initialize landmark extractor and webcam capture with lower thresholds
+    # Initialize landmark extractor with lower thresholds
     extractor = LandmarkExtractor(
         static_image_mode=False,
         max_num_hands=2,  # Allow both hands
         min_detection_confidence=0.3,  # Lower threshold for easier detection
-        min_tracking_confidence=0.3,   # Lower threshold for easier tracking
+        min_tracking_confidence=0.3,  # Lower threshold for easier tracking
     )
 
-    webcam = WebcamCapture(camera_index=0)
-
     try:
-        # Start webcam capture
-        if not webcam.start_capture():
-            await websocket.send_text(json.dumps({
-                'error': 'Failed to initialize webcam',
-                'timestamp': time.time()
-            }))
-            return
-
-        # Target 30 FPS
-        target_fps = 30
-        frame_duration = 1.0 / target_fps
-
         while True:
-            start_time = time.time()
+            # Receive a JPEG frame captured client-side
+            frame_bytes = await websocket.receive_bytes()
 
-            # Capture frame from webcam
-            frame = webcam.get_frame()
+            frame_array = np.frombuffer(frame_bytes, dtype=np.uint8)
+            frame = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
             if frame is None:
-                await websocket.send_text(json.dumps({
-                    'error': 'Failed to capture frame',
-                    'timestamp': time.time()
-                }))
-                await asyncio.sleep(0.1)
                 continue
 
-            # Extract landmarks
-            landmarks_data = extractor.extract_landmarks(frame)
+            # Extract landmarks off the event loop (MediaPipe call is blocking)
+            landmarks_data = await asyncio.to_thread(extractor.extract_landmarks, frame)
 
             # Format for JSON transmission
             json_data = format_landmarks_for_json(landmarks_data or [])
@@ -130,27 +114,21 @@ async def websocket_landmarks(websocket: WebSocket):
             # Send to client
             await manager.send_to_connection(json_data, websocket)
 
-            # Maintain target FPS
-            elapsed = time.time() - start_time
-            sleep_time = max(0, frame_duration - elapsed)
-            if sleep_time > 0:
-                await asyncio.sleep(sleep_time)
-
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception as e:
         # Send error to client before closing
         try:
-            await websocket.send_text(json.dumps({
-                'error': f'Server error: {str(e)}',
-                'timestamp': time.time()
-            }))
-        except:
+            await websocket.send_text(
+                json.dumps(
+                    {"error": f"Server error: {str(e)}", "timestamp": time.time()}
+                )
+            )
+        except Exception:
             pass
         manager.disconnect(websocket)
     finally:
         # Clean up resources
-        webcam.stop_capture()
         extractor.close()
 
 
@@ -161,18 +139,11 @@ async def health_check():
         "status": "healthy",
         "timestamp": time.time(),
         "version": "0.1.0",
-        "services": {
-            "mediapipe": "ready",
-            "webcam": "ready"
-        }
+        "services": {"mediapipe": "ready"},
     }
 
 
 if __name__ == "__main__":
     uvicorn.run(
-        "backend.api.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
+        "backend.api.main:app", host="0.0.0.0", port=8000, reload=True, log_level="info"
     )

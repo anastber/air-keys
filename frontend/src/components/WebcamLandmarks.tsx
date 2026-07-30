@@ -16,13 +16,16 @@ interface HandData {
 interface LandmarkData {
   timestamp: number;
   hands: HandData[];
+  error?: string;
 }
 
 const WebcamLandmarks: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  
+  const captureCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const frameIntervalRef = useRef<number | null>(null);
+
   const [isConnected, setIsConnected] = useState(false);
   const [isWebcamActive, setIsWebcamActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +64,43 @@ const WebcamLandmarks: React.FC = () => {
     }
   }, []);
 
+  // Capture the current video frame and send it to the backend as a JPEG
+  const sendFrame = useCallback(() => {
+    const video = videoRef.current;
+    const ws = wsRef.current;
+    if (!video || video.readyState < 2 || !ws || ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    if (!captureCanvasRef.current) {
+      captureCanvasRef.current = document.createElement('canvas');
+    }
+    const canvas = captureCanvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(
+      (blob) => {
+        if (blob && wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(blob);
+        }
+      },
+      'image/jpeg',
+      0.7
+    );
+  }, []);
+
+  const stopFrameLoop = useCallback(() => {
+    if (frameIntervalRef.current !== null) {
+      window.clearInterval(frameIntervalRef.current);
+      frameIntervalRef.current = null;
+    }
+  }, []);
+
   // Connect to WebSocket
   const connectWebSocket = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -74,6 +114,8 @@ const WebcamLandmarks: React.FC = () => {
         console.log('WebSocket connected');
         setIsConnected(true);
         setError(null);
+        stopFrameLoop();
+        frameIntervalRef.current = window.setInterval(sendFrame, 1000 / 15);
       };
 
       ws.onmessage = (event) => {
@@ -82,10 +124,6 @@ const WebcamLandmarks: React.FC = () => {
           if (data.error) {
             setError(data.error);
           } else {
-            // Debug: log the first few landmarks to see their values
-            if (data.hands.length > 0) {
-              console.log('First 3 landmarks:', data.hands[0].landmarks.slice(0, 3));
-            }
             setLandmarkData(data);
           }
         } catch (err) {
@@ -96,29 +134,32 @@ const WebcamLandmarks: React.FC = () => {
       ws.onclose = () => {
         console.log('WebSocket disconnected');
         setIsConnected(false);
+        stopFrameLoop();
       };
 
       ws.onerror = (err) => {
         console.error('WebSocket error:', err);
         setError('WebSocket connection failed');
         setIsConnected(false);
+        stopFrameLoop();
       };
 
       wsRef.current = ws;
-    } catch (err) {
+    } catch {
       setError('Failed to create WebSocket connection');
       setIsConnected(false);
     }
-  }, []);
+  }, [sendFrame, stopFrameLoop]);
 
   // Disconnect WebSocket
   const disconnectWebSocket = useCallback(() => {
+    stopFrameLoop();
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
       setIsConnected(false);
     }
-  }, []);
+  }, [stopFrameLoop]);
 
   // Draw landmarks on canvas
   const drawLandmarks = useCallback(() => {
@@ -231,6 +272,17 @@ const WebcamLandmarks: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [drawLandmarks]);
 
+  // Auto-start webcam and connect to backend on mount
+  useEffect(() => {
+    startWebcam();
+  }, [startWebcam]);
+
+  useEffect(() => {
+    if (isWebcamActive) {
+      connectWebSocket();
+    }
+  }, [isWebcamActive, connectWebSocket]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -242,32 +294,6 @@ const WebcamLandmarks: React.FC = () => {
   return (
     <div className="flex flex-col items-center gap-4 p-4">
       <h2 className="text-2xl font-bold text-center">AirKeys Hand Tracking</h2>
-      
-      {/* Controls */}
-      <div className="flex gap-2">
-        <button
-          onClick={isWebcamActive ? stopWebcam : startWebcam}
-          className={`px-4 py-2 rounded font-medium ${
-            isWebcamActive
-              ? 'bg-red-500 hover:bg-red-600 text-white'
-              : 'bg-green-500 hover:bg-green-600 text-white'
-          }`}
-        >
-          {isWebcamActive ? 'Stop Webcam' : 'Start Webcam'}
-        </button>
-        
-        <button
-          onClick={isConnected ? disconnectWebSocket : connectWebSocket}
-          disabled={!isWebcamActive}
-          className={`px-4 py-2 rounded font-medium ${
-            isConnected
-              ? 'bg-red-500 hover:bg-red-600 text-white'
-              : 'bg-blue-500 hover:bg-blue-600 text-white disabled:bg-gray-400'
-          }`}
-        >
-          {isConnected ? 'Disconnect' : 'Connect to Backend'}
-        </button>
-      </div>
 
       {/* Status indicators */}
       <div className="flex gap-4 text-sm">
@@ -315,10 +341,7 @@ const WebcamLandmarks: React.FC = () => {
       {/* Instructions */}
       <div className="text-sm text-gray-600 max-w-md text-center">
         <p className="mb-2">
-          1. Click &ldquo;Start Webcam&rdquo; to enable your camera
-        </p>
-        <p className="mb-2">
-          2. Click &ldquo;Connect to Backend&rdquo; to start hand tracking
+          Webcam and backend connect automatically on page load.
         </p>
         <p>
           Hold your hand in front of the camera to see 21 tracked landmarks in real-time!
