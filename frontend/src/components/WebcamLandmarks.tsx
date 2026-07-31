@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import * as Tone from 'tone';
+import { isPinching, noteForHeight } from '@/lib/notes';
 
 interface Landmark {
   x: number;
@@ -25,11 +27,25 @@ const WebcamLandmarks: React.FC = () => {
   const wsRef = useRef<WebSocket | null>(null);
   const captureCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameIntervalRef = useRef<number | null>(null);
+  const synthRef = useRef<Tone.PolySynth | null>(null);
+  const pinchStateRef = useRef<Record<string, boolean>>({});
+  const awaitingResponseRef = useRef(false);
 
   const [isConnected, setIsConnected] = useState(false);
   const [isWebcamActive, setIsWebcamActive] = useState(false);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [landmarkData, setLandmarkData] = useState<LandmarkData | null>(null);
+  const [lastNote, setLastNote] = useState<string | null>(null);
+
+  // Enable audio (must be triggered by a user gesture per browser autoplay policy)
+  const enableAudio = useCallback(async () => {
+    await Tone.start();
+    if (!synthRef.current) {
+      synthRef.current = new Tone.PolySynth(Tone.Synth).toDestination();
+    }
+    setIsAudioEnabled(true);
+  }, []);
 
   // Start webcam
   const startWebcam = useCallback(async () => {
@@ -64,11 +80,20 @@ const WebcamLandmarks: React.FC = () => {
     }
   }, []);
 
-  // Capture the current video frame and send it to the backend as a JPEG
+  // Capture the current video frame and send it to the backend as a JPEG.
+  // Gated by awaitingResponseRef so we never have more than one frame in flight —
+  // otherwise frames queue up faster than the backend can process them and
+  // detection lags further and further behind the live video.
   const sendFrame = useCallback(() => {
     const video = videoRef.current;
     const ws = wsRef.current;
-    if (!video || video.readyState < 2 || !ws || ws.readyState !== WebSocket.OPEN) {
+    if (
+      awaitingResponseRef.current ||
+      !video ||
+      video.readyState < 2 ||
+      !ws ||
+      ws.readyState !== WebSocket.OPEN
+    ) {
       return;
     }
 
@@ -86,6 +111,7 @@ const WebcamLandmarks: React.FC = () => {
     canvas.toBlob(
       (blob) => {
         if (blob && wsRef.current?.readyState === WebSocket.OPEN) {
+          awaitingResponseRef.current = true;
           wsRef.current.send(blob);
         }
       },
@@ -115,10 +141,14 @@ const WebcamLandmarks: React.FC = () => {
         setIsConnected(true);
         setError(null);
         stopFrameLoop();
-        frameIntervalRef.current = window.setInterval(sendFrame, 1000 / 15);
+        awaitingResponseRef.current = false;
+        // Interval is just a "try to send" tick; awaitingResponseRef in sendFrame
+        // is what actually paces sending to match the backend's real throughput.
+        frameIntervalRef.current = window.setInterval(sendFrame, 1000 / 30);
       };
 
       ws.onmessage = (event) => {
+        awaitingResponseRef.current = false;
         try {
           const data: LandmarkData = JSON.parse(event.data);
           if (data.error) {
@@ -262,6 +292,30 @@ const WebcamLandmarks: React.FC = () => {
     drawLandmarks();
   }, [drawLandmarks]);
 
+  // Turn pinch gestures into notes: pinch triggers a note, hand height picks the pitch
+  useEffect(() => {
+    if (!isAudioEnabled || !landmarkData || !synthRef.current) return;
+
+    landmarkData.hands.forEach((hand) => {
+      if (hand.landmarks.length < 21) return;
+
+      const thumbTip = hand.landmarks[4];
+      const indexTip = hand.landmarks[8];
+      const wrist = hand.landmarks[0];
+
+      const pinched = isPinching(thumbTip, indexTip);
+      const wasPinched = pinchStateRef.current[hand.handedness] ?? false;
+
+      if (pinched && !wasPinched) {
+        const note = noteForHeight(wrist.y);
+        synthRef.current?.triggerAttackRelease(note, '8n');
+        setLastNote(note);
+      }
+
+      pinchStateRef.current[hand.handedness] = pinched;
+    });
+  }, [landmarkData, isAudioEnabled]);
+
   // Update canvas size when window resizes
   useEffect(() => {
     const handleResize = () => {
@@ -295,6 +349,15 @@ const WebcamLandmarks: React.FC = () => {
     <div className="flex flex-col items-center gap-4 p-4">
       <h2 className="text-2xl font-bold text-center">AirKeys Hand Tracking</h2>
 
+      {!isAudioEnabled && (
+        <button
+          onClick={enableAudio}
+          className="px-4 py-2 rounded font-medium bg-blue-500 hover:bg-blue-600 text-white"
+        >
+          Enable Sound
+        </button>
+      )}
+
       {/* Status indicators */}
       <div className="flex gap-4 text-sm">
         <div className={`flex items-center gap-2 ${isWebcamActive ? 'text-green-600' : 'text-red-600'}`}>
@@ -305,7 +368,15 @@ const WebcamLandmarks: React.FC = () => {
           <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
           Backend: {isConnected ? 'Connected' : 'Disconnected'}
         </div>
+        <div className={`flex items-center gap-2 ${isAudioEnabled ? 'text-green-600' : 'text-red-600'}`}>
+          <div className={`w-3 h-3 rounded-full ${isAudioEnabled ? 'bg-green-500' : 'bg-red-500'}`} />
+          Audio: {isAudioEnabled ? 'Enabled' : 'Disabled'}
+        </div>
       </div>
+
+      {lastNote && (
+        <div className="text-lg font-mono text-gray-700">Last note: {lastNote}</div>
+      )}
 
       {/* Error display */}
       {error && (
@@ -344,7 +415,8 @@ const WebcamLandmarks: React.FC = () => {
           Webcam and backend connect automatically on page load.
         </p>
         <p>
-          Hold your hand in front of the camera to see 21 tracked landmarks in real-time!
+          Click &ldquo;Enable Sound&rdquo;, then pinch your thumb and index finger to play a note.
+          Move your hand up/down to change the pitch.
         </p>
       </div>
     </div>
