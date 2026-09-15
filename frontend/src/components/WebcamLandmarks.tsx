@@ -1,51 +1,27 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import * as Tone from 'tone';
-import { isPinching, noteForHeight } from '@/lib/notes';
+import type { LandmarkData } from '@/lib/types';
 
-interface Landmark {
-  x: number;
-  y: number;
-  z: number;
+interface WebcamLandmarksProps {
+  // Fires on every landmark message from the backend (including gesture
+  // classification once a model is trained). Audio/gesture logic lives in
+  // whoever consumes this — this component only does camera + perception.
+  onLandmarks?: (data: LandmarkData) => void;
 }
 
-interface HandData {
-  handedness: string;
-  landmarks: Landmark[];
-}
-
-interface LandmarkData {
-  timestamp: number;
-  hands: HandData[];
-  error?: string;
-}
-
-const WebcamLandmarks: React.FC = () => {
+const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const captureCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameIntervalRef = useRef<number | null>(null);
-  const synthRef = useRef<Tone.PolySynth | null>(null);
-  const pinchStateRef = useRef<Record<string, boolean>>({});
   const awaitingResponseRef = useRef(false);
 
   const [isConnected, setIsConnected] = useState(false);
   const [isWebcamActive, setIsWebcamActive] = useState(false);
-  const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [landmarkData, setLandmarkData] = useState<LandmarkData | null>(null);
-  const [lastNote, setLastNote] = useState<string | null>(null);
-
-  // Enable audio (must be triggered by a user gesture per browser autoplay policy)
-  const enableAudio = useCallback(async () => {
-    await Tone.start();
-    if (!synthRef.current) {
-      synthRef.current = new Tone.PolySynth(Tone.Synth).toDestination();
-    }
-    setIsAudioEnabled(true);
-  }, []);
 
   // Start webcam
   const startWebcam = useCallback(async () => {
@@ -57,7 +33,7 @@ const WebcamLandmarks: React.FC = () => {
           frameRate: 30
         }
       });
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
@@ -135,7 +111,7 @@ const WebcamLandmarks: React.FC = () => {
 
     try {
       const ws = new WebSocket('ws://localhost:8000/ws/landmarks');
-      
+
       ws.onopen = () => {
         console.log('WebSocket connected');
         setIsConnected(true);
@@ -155,6 +131,7 @@ const WebcamLandmarks: React.FC = () => {
             setError(data.error);
           } else {
             setLandmarkData(data);
+            onLandmarks?.(data);
           }
         } catch (err) {
           console.error('Failed to parse WebSocket message:', err);
@@ -179,7 +156,7 @@ const WebcamLandmarks: React.FC = () => {
       setError('Failed to create WebSocket connection');
       setIsConnected(false);
     }
-  }, [sendFrame, stopFrameLoop]);
+  }, [sendFrame, stopFrameLoop, onLandmarks]);
 
   // Disconnect WebSocket
   const disconnectWebSocket = useCallback(() => {
@@ -202,7 +179,7 @@ const WebcamLandmarks: React.FC = () => {
     if (!ctx) return;
 
     const video = videoRef.current;
-    
+
     // Set canvas size to match video
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
@@ -213,13 +190,13 @@ const WebcamLandmarks: React.FC = () => {
     // Draw landmarks for each detected hand
     landmarkData.hands.forEach((hand) => {
       const color = hand.handedness === 'Right' ? '#ff0000' : '#0000ff';
-      
-      
+
+
       hand.landmarks.forEach((landmark, index) => {
         // Convert normalized coordinates [0, 1] to canvas coordinates
         const x = landmark.x * canvas.width;
         const y = landmark.y * canvas.height;
-        
+
         // Draw landmark point
         ctx.fillStyle = color;
         ctx.beginPath();
@@ -235,15 +212,19 @@ const WebcamLandmarks: React.FC = () => {
         ctx.fillText(index.toString(), x + 8, y - 8);
       });
 
-      // Draw hand label
+      // Draw hand label (handedness, plus classified gesture once trained)
       if (hand.landmarks.length > 0) {
         const wrist = hand.landmarks[0];
         const labelX = wrist.x * canvas.width;
         const labelY = wrist.y * canvas.height - 20;
-        
+
+        const label = hand.gesture
+          ? `${hand.handedness} · ${hand.gesture} (${Math.round((hand.confidence ?? 0) * 100)}%)`
+          : hand.handedness;
+
         ctx.fillStyle = color;
         ctx.font = '16px Arial';
-        ctx.fillText(hand.handedness, labelX, labelY);
+        ctx.fillText(label, labelX, labelY);
       }
     });
 
@@ -292,36 +273,12 @@ const WebcamLandmarks: React.FC = () => {
     drawLandmarks();
   }, [drawLandmarks]);
 
-  // Turn pinch gestures into notes: pinch triggers a note, hand height picks the pitch
-  useEffect(() => {
-    if (!isAudioEnabled || !landmarkData || !synthRef.current) return;
-
-    landmarkData.hands.forEach((hand) => {
-      if (hand.landmarks.length < 21) return;
-
-      const thumbTip = hand.landmarks[4];
-      const indexTip = hand.landmarks[8];
-      const wrist = hand.landmarks[0];
-
-      const pinched = isPinching(thumbTip, indexTip);
-      const wasPinched = pinchStateRef.current[hand.handedness] ?? false;
-
-      if (pinched && !wasPinched) {
-        const note = noteForHeight(wrist.y);
-        synthRef.current?.triggerAttackRelease(note, '8n');
-        setLastNote(note);
-      }
-
-      pinchStateRef.current[hand.handedness] = pinched;
-    });
-  }, [landmarkData, isAudioEnabled]);
-
   // Update canvas size when window resizes
   useEffect(() => {
     const handleResize = () => {
       drawLandmarks();
     };
-    
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [drawLandmarks]);
@@ -346,18 +303,7 @@ const WebcamLandmarks: React.FC = () => {
   }, [stopWebcam, disconnectWebSocket]);
 
   return (
-    <div className="flex flex-col items-center gap-4 p-4">
-      <h2 className="text-2xl font-bold text-center">AirKeys Hand Tracking</h2>
-
-      {!isAudioEnabled && (
-        <button
-          onClick={enableAudio}
-          className="px-4 py-2 rounded font-medium bg-blue-500 hover:bg-blue-600 text-white"
-        >
-          Enable Sound
-        </button>
-      )}
-
+    <div className="flex flex-col items-center gap-4">
       {/* Status indicators */}
       <div className="flex gap-4 text-sm">
         <div className={`flex items-center gap-2 ${isWebcamActive ? 'text-green-600' : 'text-red-600'}`}>
@@ -368,15 +314,7 @@ const WebcamLandmarks: React.FC = () => {
           <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
           Backend: {isConnected ? 'Connected' : 'Disconnected'}
         </div>
-        <div className={`flex items-center gap-2 ${isAudioEnabled ? 'text-green-600' : 'text-red-600'}`}>
-          <div className={`w-3 h-3 rounded-full ${isAudioEnabled ? 'bg-green-500' : 'bg-red-500'}`} />
-          Audio: {isAudioEnabled ? 'Enabled' : 'Disabled'}
-        </div>
       </div>
-
-      {lastNote && (
-        <div className="text-lg font-mono text-gray-700">Last note: {lastNote}</div>
-      )}
 
       {/* Error display */}
       {error && (
@@ -388,7 +326,7 @@ const WebcamLandmarks: React.FC = () => {
       {/* Landmark data display */}
       {landmarkData && (
         <div className="text-sm text-gray-600">
-          Hands detected: {landmarkData.hands.length} | 
+          Hands detected: {landmarkData.hands.length} |
           Last update: {new Date(landmarkData.timestamp * 1000).toLocaleTimeString()}
         </div>
       )}
@@ -407,17 +345,6 @@ const WebcamLandmarks: React.FC = () => {
           ref={canvasRef}
           className="absolute top-0 left-0 pointer-events-none"
         />
-      </div>
-
-      {/* Instructions */}
-      <div className="text-sm text-gray-600 max-w-md text-center">
-        <p className="mb-2">
-          Webcam and backend connect automatically on page load.
-        </p>
-        <p>
-          Click &ldquo;Enable Sound&rdquo;, then pinch your thumb and index finger to play a note.
-          Move your hand up/down to change the pitch.
-        </p>
       </div>
     </div>
   );
