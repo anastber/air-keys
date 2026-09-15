@@ -2,44 +2,46 @@
 
 **Camera-Based Gesture Instrument**
 
-AirKeys turns your MacBook webcam into a musical instrument. Point the camera at your hand, and a fine-tuned gesture classifier maps your finger positions and movements to piano or guitar notes in real time. A RAG-powered music theory assistant watches you play and offers contextual coaching, grounded in open music theory literature.
+AirKeys turns your webcam into a musical instrument. MediaPipe tracks your hand in real time; a small classifier you train live recognizes hand poses (fist, open palm, pinch, ...); a rule engine maps each recognized pose to a musical action. Nothing is scripted with hardcoded geometry checks — the pose recognition is a model trained on samples you record yourself, and can be retaught on the spot.
+
+## How it works
+
+```
+Webcam --> MediaPipe (21 hand landmarks) --> Gesture Classifier --> Rule Engine --> Tone.js audio
+              [browser + backend]           [trained live,          [gesture ->
+                                              random forest]          musical action]
+```
+
+- **Hand tracking**: MediaPipe extracts 21 3D landmarks per hand from webcam frames, streamed over a WebSocket to the backend.
+- **Gesture classifier**: landmarks are normalized (centered on the wrist, scaled by hand size, mirrored for left hands) into a pose-invariant feature vector, then classified by a random forest trained on samples recorded through the app. You can add a new gesture and retrain in seconds — see `/api/gestures/*` below.
+- **Rule engine**: each recognized gesture is mapped to a musical action (play a note, play a chord, trigger an arpeggio, ...), with continuous signals like hand height and velocity controlling pitch and dynamics. This mapping is user-editable, not fixed.
+- **Audio**: Tone.js synthesizes the result client-side.
 
 ## Features
 
-- **Real-time Hand Tracking**: Uses MediaPipe for 21-point hand landmark detection
-- **ML-Powered Gesture Recognition**: Fine-tuned transformer classifier with LoRA
-- **Live Audio Synthesis**: MIDI-based note generation with piano and guitar sounds
-- **Agentic RAG Assistant**: AI music theory coach powered by LangGraph and ChromaDB
-- **Full MLOps Pipeline**: DVC data versioning, MLflow tracking, automated retraining
+- **Real-time hand tracking** — MediaPipe, 21-point landmarks, both hands
+- **Trainable gesture classifier** — record labeled samples live, retrain in place, no ML background required to add a new gesture
+- **Rule-based gesture-to-music mapping** — what each gesture does is configurable, not hardcoded
 
 ## Tech Stack
 
-### Core ML & AI
+### Backend
 
-- **PyTorch** - Deep learning framework
-- **Transformers + LoRA** - Fine-tuned gesture classifier
-- **MediaPipe** - Computer vision and hand tracking
-- **sentence-transformers** - Vector embeddings for RAG
-
-### Backend & Infrastructure
-
-- **FastAPI** - High-performance API server
-- **ChromaDB** - Vector database for music theory knowledge
-- **LangGraph** - Agentic RAG workflow orchestration
-- **MLflow** - Experiment tracking and model registry
+- **FastAPI** - API server + WebSocket landmark streaming
+- **MediaPipe** - hand landmark detection
+- **scikit-learn** - gesture pose classifier (random forest)
+- **OpenCV / NumPy** - frame decoding and feature math
 
 ### Frontend
 
-- **Next.js 14** - React-based web interface
-- **TypeScript** - Type-safe development
-- **TailwindCSS** - Utility-first styling
-- **Tone.js** - Web audio synthesis
+- **Next.js 14 / TypeScript** - web interface
+- **TailwindCSS** - styling
+- **Tone.js** - web audio synthesis
 
-### MLOps & Data
+### Tooling
 
-- **DVC** - Data version control
-- **GitHub Actions** - CI/CD pipeline
-- **uv** - Fast Python package management
+- **uv** - Python package management
+- **GitHub Actions** - lint CI (ruff + ESLint)
 
 ## Quick Start
 
@@ -48,7 +50,7 @@ AirKeys turns your MacBook webcam into a musical instrument. Point the camera at
 - **Python 3.11+**
 - **Node.js 18+**
 - **uv** (Python package manager)
-- **Webcam** (built-in MacBook camera works great)
+- **Webcam**
 
 ### Installation
 
@@ -56,7 +58,7 @@ AirKeys turns your MacBook webcam into a musical instrument. Point the camera at
 
    ```bash
    git clone https://github.com/anastber/air-keys.git
-   cd airkeys
+   cd air-keys
    ```
 
 2. **Install all dependencies**
@@ -96,22 +98,30 @@ make format
 make help
 ```
 
+## Training a gesture
+
+1. Open the app and hold a pose (e.g. a fist) in front of the camera.
+2. Record ~15-30 samples for it via the training UI (or directly: `POST /api/gestures/samples` with `{label, landmarks, handedness}`).
+3. Repeat for at least one more gesture (at least 8 samples per class, 2 classes minimum).
+4. `POST /api/gestures/train` — retrains the classifier on every sample recorded so far and returns accuracy plus a confusion matrix. Takes well under a second.
+5. The `/ws/landmarks` stream now includes a `gesture` + `confidence` field per detected hand.
+
+Gesture labels are fixed to a set of 6 (`backend/gesture/labels.py`): `fist`, `open_palm`, `pinch`, `point`, `peace`, `thumbs_up`. Recorded samples live in `ml/data/gestures.jsonl`; the trained model in `ml/experiments/gesture_classifier.joblib` — both generated locally and gitignored, not shipped in the repo.
+
 ## Development Workflow
 
 **Git workflow:**
 
 - Each session = one feature branch
 - All CI checks must pass before merge
-- Use conventional commits: `feat(gesture): add transformer classifier`
+- Use conventional commits: `feat(gesture): add classifier training endpoint`
 - Verify features by running the app live (`make dev`) rather than automated tests
 
-## MLOps Pipeline
+## Roadmap
 
-- **Data Versioning**: DVC tracks datasets and model artifacts
-- **Experiment Tracking**: MLflow logs metrics, hyperparameters, models
-- **Model Registry**: Automated promotion staging � production
-- **CI/CD**: GitHub Actions for linting
-- **Auto-Retraining**: Triggered when new training data is added
+- Rule-editor UI to remap gestures to musical actions without touching code
+- Natural-language instrument reconfiguration (e.g. "make it sound sad and jazzy") via an LLM producing structured scale/voicing/envelope config
+- Move MediaPipe inference into the browser to cut round-trip latency
 
 ## Contributing
 
@@ -123,5 +133,3 @@ make help
 ## License
 
 MIT License - see LICENSE file for details.
-
----
