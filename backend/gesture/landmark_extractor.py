@@ -143,6 +143,11 @@ def format_landmarks_for_json(landmarks_data: list[dict[str, Any]]) -> dict[str,
                 "handedness": hand_data["handedness"],
                 "landmarks": hand_data["landmarks"],
             }
+            # Pass through gesture classification if the caller attached one
+            # (see backend.gesture.classifier) — absent until a model is trained.
+            if "gesture" in hand_data:
+                formatted_hand["gesture"] = hand_data["gesture"]
+                formatted_hand["confidence"] = hand_data["confidence"]
             formatted_data["hands"].append(formatted_hand)
 
     return formatted_data
