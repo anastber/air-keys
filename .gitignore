@@ -292,3 +292,7 @@ Desktop.ini
 *.db
 *.sqlite
 *.sqlite3
+
+# ===== Gesture classifier data/model (generated live, not committed) =====
+ml/data/*.jsonl
+ml/experiments/*.joblib

@@ -5,39 +5,22 @@ description = "Camera-based gesture instrument using computer vision and ML"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    # Core ML & AI
-    "torch>=2.0.0",
-    "transformers>=4.30.0",
-    "peft>=0.4.0",
-    "sentence-transformers>=2.2.0",
-    
     # Computer Vision
     "mediapipe>=0.10.0",
     "opencv-python>=4.8.0",
     "numpy>=1.24.0",
-    
-    # Audio & MIDI
-    "pretty-midi>=0.2.9",
-    "pygame>=2.5.0",
-    
+
+    # Gesture classifier
+    "scikit-learn>=1.3.0",
+    "joblib>=1.3.0",
+
     # API & Backend
     "fastapi>=0.100.0",
     "uvicorn[standard]>=0.23.0",
     "websockets>=11.0.0",
-    
-    # RAG & Vector DB
-    "chromadb>=0.4.0",
-    "langchain>=0.1.0",
-    "langgraph>=0.0.40",
-    
-    # Data & MLOps
-    "mlflow>=2.5.0",
-    "dvc[s3]>=3.0.0",
-    
+
     # Development
     "ruff>=0.0.280",
-    "requests>=2.31.0",
-    "beautifulsoup4>=4.12.0",
 ]
 
 [project.optional-dependencies]
@@ -62,3 +45,8 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# X / X_train / X_test etc. are the standard scikit-learn naming convention
+# for feature matrices (capitalized because they're 2D, unlike the 1D `y`).
+"backend/gesture/classifier.py" = ["N806"]
