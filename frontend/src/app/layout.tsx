@@ -28,6 +28,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <div className="ak-atmosphere" aria-hidden="true" />
         {children}
       </body>
     </html>

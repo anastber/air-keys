@@ -6,6 +6,7 @@ import {
   customGestureCounts,
   recordCustomGesture,
 } from '@/lib/customGestures';
+import { gestureEmoji } from '@/lib/gestureIcons';
 import type { HandData } from '@/lib/types';
 
 interface GestureTrainerProps {
@@ -59,10 +60,15 @@ const GestureTrainer: React.FC<GestureTrainerProps> = ({ currentHand, onGestureR
     setCounts(customGestureCounts());
   };
 
+  const progress = recordingLabel ? recordedCount / SAMPLES_PER_RECORDING : 0;
+
   return (
-    <div className="border rounded p-4 flex flex-col gap-3 w-full max-w-md">
-      <h3 className="font-bold text-lg">Teach a Gesture</h3>
-      <p className="text-sm text-gray-600">
+    <div className="ak-glass rounded-2xl p-5 w-full max-w-sm flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <span className="text-lg">🧠</span>
+        <h3 className="font-semibold text-ak-text">Teach a Gesture</h3>
+      </div>
+      <p className="text-sm text-ak-muted">
         Name a pose, hold it in frame, and record ~20 samples. Stored only in this
         browser — nothing is sent anywhere.
       </p>
@@ -74,36 +80,42 @@ const GestureTrainer: React.FC<GestureTrainerProps> = ({ currentHand, onGestureR
           onChange={(e) => setLabelInput(e.target.value)}
           placeholder="e.g. rock_on"
           disabled={recordingLabel !== null}
-          className="border rounded px-2 py-1 text-sm flex-1 disabled:opacity-50"
+          className="flex-1 bg-white/[0.06] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-ak-text placeholder:text-ak-subtle focus:outline-none focus:ring-1 focus:ring-ak-violet/60 focus:border-ak-violet/60 disabled:opacity-50"
         />
         <button
           onClick={startRecording}
           disabled={!currentHand || !labelInput.trim() || recordingLabel !== null}
-          className="px-3 py-1 rounded text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50"
+          className="px-4 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-ak-violet to-ak-cyan text-white shadow-lg shadow-ak-violet/20 hover:opacity-90 transition-opacity disabled:opacity-40 disabled:shadow-none"
         >
           Record
         </button>
       </div>
 
       {recordingLabel && (
-        <p className="text-sm font-mono text-blue-600">
-          Recording &ldquo;{recordingLabel}&rdquo;: {recordedCount}/{SAMPLES_PER_RECORDING}
-        </p>
+        <div className="flex items-center gap-3">
+          <RecordingRing progress={progress} />
+          <p className="text-sm font-mono text-ak-cyan">
+            &ldquo;{recordingLabel}&rdquo; — {recordedCount}/{SAMPLES_PER_RECORDING}
+          </p>
+        </div>
       )}
       {!currentHand && (
-        <p className="text-xs text-amber-600">Show a hand to the camera to record.</p>
+        <p className="text-xs text-ak-amber">Show a hand to the camera to record.</p>
       )}
 
       {Object.keys(counts).length > 0 && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5 pt-1 border-t border-white/[0.06]">
           {Object.entries(counts).map(([label, count]) => (
             <div key={label} className="flex items-center justify-between text-sm">
-              <span className="font-mono">
-                {label} ({count})
+              <span className="flex items-center gap-1.5">
+                <span className="text-base leading-none">{gestureEmoji(label)}</span>
+                <span className="font-mono text-ak-text">
+                  {label} <span className="text-ak-subtle">({count})</span>
+                </span>
               </span>
               <button
                 onClick={() => handleDelete(label)}
-                className="text-xs text-red-600 hover:underline"
+                className="text-xs text-ak-red/80 hover:text-ak-red hover:underline"
               >
                 remove
               </button>
@@ -111,6 +123,20 @@ const GestureTrainer: React.FC<GestureTrainerProps> = ({ currentHand, onGestureR
           ))}
         </div>
       )}
+    </div>
+  );
+};
+
+const RecordingRing: React.FC<{ progress: number }> = ({ progress }) => {
+  const pct = Math.round(progress * 100);
+  return (
+    <div
+      className="relative w-9 h-9 rounded-full shrink-0"
+      style={{
+        background: `conic-gradient(#22d3ee ${pct}%, rgba(255,255,255,0.1) ${pct}% 100%)`,
+      }}
+    >
+      <div className="absolute inset-[3px] rounded-full bg-ak-bg" />
     </div>
   );
 };

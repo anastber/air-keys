@@ -2,6 +2,7 @@
 
 import React from 'react';
 import type { ActionType, GestureRule, Voicing } from '@/lib/rules';
+import { gestureEmoji } from '@/lib/gestureIcons';
 
 interface RuleEditorProps {
   labels: string[];
@@ -12,10 +13,18 @@ interface RuleEditorProps {
 const ACTIONS: ActionType[] = ['note', 'chord', 'bass', 'arpeggio', 'sustain_toggle'];
 const VOICINGS: Voicing[] = ['close', 'open'];
 
+const selectClass =
+  'bg-white/[0.06] border border-white/10 rounded-lg px-2 py-1 text-ak-text text-xs focus:outline-none focus:ring-1 focus:ring-ak-violet/60 focus:border-ak-violet/60';
+const numberClass =
+  'bg-white/[0.06] border border-white/10 rounded-lg w-12 px-1.5 py-1 text-ak-text text-xs text-center focus:outline-none focus:ring-1 focus:ring-ak-violet/60 focus:border-ak-violet/60';
+
 const RuleEditor: React.FC<RuleEditorProps> = ({ labels, rules, onChange }) => (
-  <div className="border rounded p-4 w-full max-w-md">
-    <h3 className="font-bold text-lg mb-1">Gesture Rules</h3>
-    <p className="text-sm text-gray-600 mb-3">
+  <div className="ak-glass rounded-2xl p-5 w-full max-w-sm flex flex-col gap-3">
+    <div className="flex items-center gap-2">
+      <span className="text-lg">🎛️</span>
+      <h3 className="font-semibold text-ak-text">Gesture Rules</h3>
+    </div>
+    <p className="text-sm text-ak-muted">
       What each gesture plays. Edit live — a change applies the next time you make
       that gesture, no retraining needed.
     </p>
@@ -24,12 +33,18 @@ const RuleEditor: React.FC<RuleEditorProps> = ({ labels, rules, onChange }) => (
         const rule = rules[label];
         if (!rule) return null;
         return (
-          <div key={label} className="flex flex-wrap items-center gap-2 text-sm border-b pb-2">
-            <span className="font-mono w-24 shrink-0">{label}</span>
+          <div
+            key={label}
+            className="flex flex-wrap items-center gap-2 rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-2.5"
+          >
+            <span className="flex items-center gap-1.5 w-24 shrink-0">
+              <span className="text-base leading-none">{gestureEmoji(label)}</span>
+              <span className="font-mono text-xs text-ak-muted truncate">{label}</span>
+            </span>
             <select
               value={rule.action}
               onChange={(e) => onChange(label, { action: e.target.value as ActionType })}
-              className="border rounded px-1 py-0.5"
+              className={selectClass}
             >
               {ACTIONS.map((a) => (
                 <option key={a} value={a}>
@@ -41,7 +56,7 @@ const RuleEditor: React.FC<RuleEditorProps> = ({ labels, rules, onChange }) => (
               <select
                 value={rule.voicing ?? 'close'}
                 onChange={(e) => onChange(label, { voicing: e.target.value as Voicing })}
-                className="border rounded px-1 py-0.5"
+                className={selectClass}
               >
                 {VOICINGS.map((v) => (
                   <option key={v} value={v}>
@@ -51,7 +66,7 @@ const RuleEditor: React.FC<RuleEditorProps> = ({ labels, rules, onChange }) => (
               </select>
             )}
             {rule.action !== 'sustain_toggle' && (
-              <span className="flex items-center gap-1 text-xs text-gray-600">
+              <span className="flex items-center gap-1 text-xs text-ak-subtle">
                 octaves
                 <input
                   type="number"
@@ -63,7 +78,7 @@ const RuleEditor: React.FC<RuleEditorProps> = ({ labels, rules, onChange }) => (
                       octaveRange: { ...rule.octaveRange, min: Number(e.target.value) },
                     })
                   }
-                  className="border rounded w-12 px-1"
+                  className={numberClass}
                 />
                 –
                 <input
@@ -76,7 +91,7 @@ const RuleEditor: React.FC<RuleEditorProps> = ({ labels, rules, onChange }) => (
                       octaveRange: { ...rule.octaveRange, max: Number(e.target.value) },
                     })
                   }
-                  className="border rounded w-12 px-1"
+                  className={numberClass}
                 />
               </span>
             )}

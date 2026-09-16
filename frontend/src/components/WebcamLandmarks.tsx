@@ -3,7 +3,13 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { GestureRecognizer } from '@mediapipe/tasks-vision';
 import { loadGestureRecognizer, recognizeFrame } from '@/lib/gestureRecognition';
+import { gestureEmoji } from '@/lib/gestureIcons';
 import type { LandmarkData } from '@/lib/types';
+
+// Right hand reads cyan, left reads pink — matches the app's accent palette
+// instead of literal traffic-light red/blue.
+const RIGHT_COLOR = '#22d3ee';
+const LEFT_COLOR = '#f472b6';
 
 interface WebcamLandmarksProps {
   // Fires on every recognized frame (including gesture classification from
@@ -96,48 +102,7 @@ const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks }) => {
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw landmarks for each detected hand
-    landmarkData.hands.forEach((hand) => {
-      const color = hand.handedness === 'Right' ? '#ff0000' : '#0000ff';
-
-
-      hand.landmarks.forEach((landmark, index) => {
-        // Convert normalized coordinates [0, 1] to canvas coordinates
-        const x = landmark.x * canvas.width;
-        const y = landmark.y * canvas.height;
-
-        // Draw landmark point
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(x, y, index === 0 ? 8 : 4, 0, 2 * Math.PI); // Wrist is larger
-        ctx.fill();
-
-        // Draw landmark index for debugging
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '12px Arial';
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 1;
-        ctx.strokeText(index.toString(), x + 8, y - 8);
-        ctx.fillText(index.toString(), x + 8, y - 8);
-      });
-
-      // Draw hand label (handedness, plus classified gesture once available)
-      if (hand.landmarks.length > 0) {
-        const wrist = hand.landmarks[0];
-        const labelX = wrist.x * canvas.width;
-        const labelY = wrist.y * canvas.height - 20;
-
-        const label = hand.gesture
-          ? `${hand.handedness} · ${hand.gesture} (${Math.round((hand.confidence ?? 0) * 100)}%)`
-          : hand.handedness;
-
-        ctx.fillStyle = color;
-        ctx.font = '16px Arial';
-        ctx.fillText(label, labelX, labelY);
-      }
-    });
-
-    // Draw connections between landmarks (MediaPipe hand connections)
+    // Draw connections first so landmark points render on top of the lines.
     landmarkData.hands.forEach((hand) => {
       if (hand.landmarks.length !== 21) return;
 
@@ -156,24 +121,73 @@ const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks }) => {
         [5, 9], [9, 13], [13, 17]
       ];
 
-      const color = hand.handedness === 'Right' ? '#ff0000' : '#0000ff';
+      const color = hand.handedness === 'Right' ? RIGHT_COLOR : LEFT_COLOR;
       ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8;
 
       connections.forEach(([start, end]) => {
         const startLandmark = hand.landmarks[start];
         const endLandmark = hand.landmarks[end];
 
-        const startX = startLandmark.x * canvas.width;
-        const startY = startLandmark.y * canvas.height;
-        const endX = endLandmark.x * canvas.width;
-        const endY = endLandmark.y * canvas.height;
-
         ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(endX, endY);
+        ctx.moveTo(startLandmark.x * canvas.width, startLandmark.y * canvas.height);
+        ctx.lineTo(endLandmark.x * canvas.width, endLandmark.y * canvas.height);
         ctx.stroke();
       });
+      ctx.shadowBlur = 0;
+    });
+
+    // Draw landmark points + hand label on top
+    landmarkData.hands.forEach((hand) => {
+      const color = hand.handedness === 'Right' ? RIGHT_COLOR : LEFT_COLOR;
+
+      hand.landmarks.forEach((landmark, index) => {
+        const x = landmark.x * canvas.width;
+        const y = landmark.y * canvas.height;
+
+        ctx.fillStyle = index === 0 ? color : '#ffffff';
+        ctx.beginPath();
+        ctx.arc(x, y, index === 0 ? 7 : 3, 0, 2 * Math.PI); // wrist is larger
+        ctx.fill();
+      });
+
+      // Hand label: emoji + classified gesture once available, in a pill
+      // that reads clearly over busy video backgrounds.
+      if (hand.landmarks.length > 0) {
+        const wrist = hand.landmarks[0];
+        const labelX = wrist.x * canvas.width;
+        const labelY = wrist.y * canvas.height - 24;
+
+        const label = hand.gesture
+          ? `${gestureEmoji(hand.gesture)} ${hand.gesture} ${Math.round((hand.confidence ?? 0) * 100)}%`
+          : hand.handedness;
+
+        ctx.font = '600 15px var(--font-geist-sans), system-ui, sans-serif';
+        const textWidth = ctx.measureText(label).width;
+        const paddingX = 10;
+        const pillHeight = 26;
+
+        ctx.fillStyle = 'rgba(9,7,15,0.75)';
+        ctx.beginPath();
+        ctx.roundRect(
+          labelX - textWidth / 2 - paddingX,
+          labelY - pillHeight / 2 - 10,
+          textWidth + paddingX * 2,
+          pillHeight,
+          13
+        );
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = '#f4f4f6';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, labelX, labelY - 10 + pillHeight / 2 + 5);
+        ctx.textAlign = 'left';
+      }
     });
   }, [landmarkData]);
 
@@ -241,50 +255,68 @@ const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks }) => {
 
   return (
     <div className="flex flex-col items-center gap-4">
-      {/* Status indicators */}
-      <div className="flex gap-4 text-sm">
-        <div className={`flex items-center gap-2 ${isWebcamActive ? 'text-green-600' : 'text-red-600'}`}>
-          <div className={`w-3 h-3 rounded-full ${isWebcamActive ? 'bg-green-500' : 'bg-red-500'}`} />
-          Webcam: {isWebcamActive ? 'Active' : 'Inactive'}
-        </div>
-        <div className={`flex items-center gap-2 ${isModelReady ? 'text-green-600' : 'text-amber-600'}`}>
-          <div className={`w-3 h-3 rounded-full ${isModelReady ? 'bg-green-500' : 'bg-amber-500'}`} />
-          Gesture model: {isModelReady ? 'Ready' : 'Loading…'}
-        </div>
+      {/* Status pills */}
+      <div className="flex flex-wrap justify-center gap-2 text-xs">
+        <StatusPill ok={isWebcamActive} okLabel="Webcam active" badLabel="Webcam inactive" />
+        <StatusPill
+          ok={isModelReady}
+          okLabel="Gesture model ready"
+          badLabel="Loading model…"
+          pending={!isModelReady}
+        />
+        {landmarkData && (
+          <span className="ak-glass rounded-full px-3 py-1 text-ak-muted">
+            {landmarkData.hands.length === 0
+              ? 'No hands in frame'
+              : `${landmarkData.hands.length} hand${landmarkData.hands.length > 1 ? 's' : ''} tracked`}
+          </span>
+        )}
       </div>
 
       {/* Error display */}
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded max-w-md text-sm">
+        <div className="bg-ak-red/10 border border-ak-red/40 text-ak-red px-4 py-3 rounded-xl max-w-md text-sm">
           {error}
         </div>
       )}
 
-      {/* Landmark data display */}
-      {landmarkData && (
-        <div className="text-sm text-gray-600">
-          Hands detected: {landmarkData.hands.length} |
-          Last update: {new Date(landmarkData.timestamp * 1000).toLocaleTimeString()}
-        </div>
-      )}
-
       {/* Video and Canvas container */}
-      <div className="relative">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="max-w-full h-auto border rounded"
-          style={{ maxWidth: '640px', maxHeight: '480px' }}
-        />
-        <canvas
-          ref={canvasRef}
-          className="absolute top-0 left-0 pointer-events-none"
-        />
+      <div className="relative rounded-3xl p-1.5 ak-glass shadow-[0_0_60px_-15px_rgba(168,85,247,0.35)]">
+        <div className="relative overflow-hidden rounded-2xl">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="block max-w-full h-auto scale-x-[-1]"
+            style={{ maxWidth: '640px', maxHeight: '480px' }}
+          />
+          <canvas
+            ref={canvasRef}
+            className="absolute top-0 left-0 pointer-events-none scale-x-[-1]"
+          />
+        </div>
       </div>
     </div>
   );
 };
+
+const StatusPill: React.FC<{
+  ok: boolean;
+  okLabel: string;
+  badLabel: string;
+  pending?: boolean;
+}> = ({ ok, okLabel, badLabel, pending }) => (
+  <span className="ak-glass flex items-center gap-1.5 rounded-full px-3 py-1">
+    <span
+      className={`w-1.5 h-1.5 rounded-full ${
+        ok ? 'bg-ak-emerald' : pending ? 'bg-ak-amber animate-pulse' : 'bg-ak-red'
+      }`}
+    />
+    <span className={ok ? 'text-ak-text' : pending ? 'text-ak-amber' : 'text-ak-red'}>
+      {ok ? okLabel : badLabel}
+    </span>
+  </span>
+);
 
 export default WebcamLandmarks;

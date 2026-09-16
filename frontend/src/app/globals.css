@@ -2,26 +2,104 @@
 @tailwind components;
 @tailwind utilities;
 
+/* AirKeys is a performance instrument, not a dashboard — it commits to one
+   dark, stage-lit look rather than adapting to system light/dark, the way
+   most DAW/VJ tools do. Deliberate choice, not an oversight. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #09070f;
+  --foreground: #f4f4f6;
+  color-scheme: dark;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Soft drifting color blobs behind everything, fixed so panels scroll over
+   them. Pure CSS — no JS cost for an ambient effect nobody needs animated
+   at 60fps. */
+.ak-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ak-atmosphere::before,
+.ak-atmosphere::after {
+  content: "";
+  position: absolute;
+  width: 60vmax;
+  height: 60vmax;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.22;
+}
+
+.ak-atmosphere::before {
+  top: -18vmax;
+  left: -12vmax;
+  background: radial-gradient(circle, #a855f7 0%, transparent 70%);
+  animation: blob 14s ease-in-out infinite;
+}
+
+.ak-atmosphere::after {
+  bottom: -20vmax;
+  right: -14vmax;
+  background: radial-gradient(circle, #22d3ee 0%, transparent 70%);
+  animation: blob 18s ease-in-out infinite reverse;
+}
+
+@keyframes blob {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(4%, -6%) scale(1.08);
+  }
+  66% {
+    transform: translate(-3%, 4%) scale(0.95);
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Frosted panel used by every card in the app. */
+  .ak-glass {
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .ak-gradient-text {
+    background-image: linear-gradient(90deg, #a855f7, #22d3ee 55%, #f472b6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+/* Slim, dark-matched scrollbar (Chromium/WebKit) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }

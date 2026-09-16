@@ -6,7 +6,9 @@ import WebcamLandmarks from '@/components/WebcamLandmarks';
 import GestureTrainer from '@/components/GestureTrainer';
 import RuleEditor from '@/components/RuleEditor';
 import ComboGuide from '@/components/ComboGuide';
+import AudioVisualizer from '@/components/AudioVisualizer';
 import { isPinching } from '@/lib/notes';
+import { gestureEmoji } from '@/lib/gestureIcons';
 import { predictCustomGesture, customGestureLabels } from '@/lib/customGestures';
 import {
   BASE_GESTURE_LABELS,
@@ -25,6 +27,13 @@ import type { LandmarkData } from '@/lib/types';
 // coincidentally complete one.
 const COMBO_WINDOW_MS = 6000;
 
+const ACTION_ICON: Record<string, string> = {
+  note: '🎵',
+  chord: '🎹',
+  bass: '🎸',
+  arpeggio: '🎼',
+};
+
 // Ties the layers together, per hand, per frame, in one priority chain:
 //   1. a gesture the visitor taught themselves (client-side kNN, private to
 //      their browser) — takes priority since it's the one they chose to add
@@ -37,12 +46,21 @@ const Instrument: React.FC = () => {
   const [customLabels, setCustomLabels] = useState<string[]>([]);
   const [currentHand, setCurrentHand] = useState<LandmarkData['hands'][number] | null>(null);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
-  const [lastAction, setLastAction] = useState<string | null>(null);
+  const [analyser, setAnalyser] = useState<Tone.Analyser | null>(null);
+  const [lastAction, setLastAction] = useState<{ text: string; icon: string } | null>(null);
+  const [actionSeq, setActionSeq] = useState(0);
 
   const synthRef = useRef<Tone.PolySynth | null>(null);
   const gestureStateRef = useRef<Record<string, string | null>>({});
   const sustainRef = useRef(false);
   const recentGesturesRef = useRef<{ label: string; time: number }[]>([]);
+
+  // Single source of truth for "something just happened": drives both the
+  // toast text and the glow pulse around the video (keyed by actionSeq).
+  const announce = useCallback((text: string, icon: string) => {
+    setLastAction({ text, icon });
+    setActionSeq((s) => s + 1);
+  }, []);
 
   const playCombo = useCallback((combo: Combo) => {
     let delay = 200; // let the triggering gesture's own note ring briefly first
@@ -59,7 +77,11 @@ const Instrument: React.FC = () => {
   const enableAudio = useCallback(async () => {
     await Tone.start();
     if (!synthRef.current) {
-      synthRef.current = new Tone.PolySynth(Tone.Synth).toDestination();
+      const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+      const fft = new Tone.Analyser('fft', 64);
+      synth.connect(fft);
+      synthRef.current = synth;
+      setAnalyser(fft);
     }
     setIsAudioEnabled(true);
   }, []);
@@ -90,17 +112,24 @@ const Instrument: React.FC = () => {
           const rule = rules[label];
           if (rule) {
             const action = resolveAction(rule, wrist.y);
+            const emoji = gestureEmoji(label);
             if (action.type === 'sustain_toggle') {
               sustainRef.current = !sustainRef.current;
-              setLastAction(`${label} -> sustain ${sustainRef.current ? 'on' : 'off'}`);
+              announce(
+                `${emoji} ${label} → sustain ${sustainRef.current ? 'on' : 'off'}`,
+                sustainRef.current ? '🔊' : '🔈'
+              );
             } else if (action.type === 'arpeggio') {
               action.notes.forEach((note, i) => {
                 setTimeout(() => synthRef.current?.triggerAttackRelease(note, '16n'), i * 90);
               });
-              setLastAction(`${label} -> arpeggio: ${action.notes.join(' ')}`);
+              announce(`${emoji} ${label} → arpeggio: ${action.notes.join(' ')}`, '🎼');
             } else {
               synthRef.current?.triggerAttackRelease(action.notes, duration);
-              setLastAction(`${label} -> ${action.type}: ${action.notes.join(' ')}`);
+              announce(
+                `${emoji} ${label} → ${action.type}: ${action.notes.join(' ')}`,
+                ACTION_ICON[action.type] ?? '🎵'
+              );
             }
           }
 
@@ -116,13 +145,16 @@ const Instrument: React.FC = () => {
           if (combo) {
             recentGesturesRef.current = [];
             playCombo(combo);
-            setLastAction(`🎶 combo: ${combo.name}!`);
+            announce(
+              `${combo.name}: ${combo.sequence.map(gestureEmoji).join(' ')}`,
+              '🎶'
+            );
           }
         }
         gestureStateRef.current[hand.handedness] = label;
       });
     },
-    [isAudioEnabled, rules, playCombo]
+    [isAudioEnabled, rules, playCombo, announce]
   );
 
   const updateRule = useCallback((label: string, patch: Partial<GestureRule>) => {
@@ -139,28 +171,61 @@ const Instrument: React.FC = () => {
   const allLabels = [...BASE_GESTURE_LABELS, ...customLabels];
 
   return (
-    <div className="flex flex-col items-center gap-6 p-4">
-      <h2 className="text-2xl font-bold text-center">AirKeys</h2>
+    <div className="flex flex-col items-center gap-8 px-4 py-10 max-w-6xl mx-auto">
+      <header className="flex flex-col items-center gap-2 text-center">
+        <span className="ak-glass rounded-full px-3 py-1 text-xs text-ak-muted tracking-wide uppercase">
+          Client-side AI · zero setup
+        </span>
+        <h1 className="text-5xl sm:text-6xl font-bold ak-gradient-text tracking-tight py-1">
+          AirKeys
+        </h1>
+        <p className="text-ak-muted max-w-md">
+          Wave, pinch, or fist-bump the air — your webcam turns it into music.
+        </p>
+      </header>
 
       {!isAudioEnabled && (
         <button
           onClick={enableAudio}
-          className="px-4 py-2 rounded font-medium bg-blue-500 hover:bg-blue-600 text-white"
+          className="relative px-6 py-3 rounded-full font-medium text-white bg-gradient-to-r from-ak-violet via-fuchsia-500 to-ak-cyan shadow-lg shadow-ak-violet/30 hover:scale-105 active:scale-100 transition-transform animate-glow-pulse"
         >
-          Enable Sound
+          🔈 Enable Sound to Begin
         </button>
       )}
 
-      <WebcamLandmarks onLandmarks={handleLandmarks} />
+      <div className="relative">
+        {/* Glow ring that flashes around the video on every trigger, keyed
+            by actionSeq so each new trigger restarts the animation. Gated on
+            actionSeq > 0 so it doesn't also fire once on initial mount. */}
+        {actionSeq > 0 && (
+          <div
+            key={actionSeq}
+            className="pointer-events-none absolute -inset-3 rounded-[2rem] animate-glow-pulse"
+          />
+        )}
+        <WebcamLandmarks onLandmarks={handleLandmarks} />
+      </div>
 
-      {lastAction && <div className="text-sm font-mono text-gray-700">{lastAction}</div>}
+      <div className="w-full max-w-[640px] ak-glass rounded-2xl px-3 py-2">
+        <AudioVisualizer analyser={analyser} />
+      </div>
 
-      <p className="text-sm text-gray-600 max-w-md text-center">
+      {lastAction && (
+        <div
+          key={actionSeq}
+          className="ak-glass flex items-center gap-2 rounded-full px-4 py-2 text-sm font-mono text-ak-text animate-fade-in-up"
+        >
+          <span className="text-base">{lastAction.icon}</span>
+          {lastAction.text}
+        </div>
+      )}
+
+      <p className="text-sm text-ak-muted max-w-md text-center">
         Pinch, fist, open palm, point, peace, or thumbs up all work immediately — no
         setup. Teach it a gesture of your own below to add to the set.
       </p>
 
-      <div className="flex flex-wrap justify-center gap-4">
+      <div className="flex flex-wrap justify-center gap-4 w-full">
         <ComboGuide combos={COMBOS} />
         <GestureTrainer currentHand={currentHand} onGestureRecorded={handleGestureRecorded} />
         <RuleEditor labels={allLabels} rules={rules} onChange={updateRule} />
