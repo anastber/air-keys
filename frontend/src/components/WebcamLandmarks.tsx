@@ -1,27 +1,48 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import type { GestureRecognizer } from '@mediapipe/tasks-vision';
+import { loadGestureRecognizer, recognizeFrame } from '@/lib/gestureRecognition';
 import type { LandmarkData } from '@/lib/types';
 
 interface WebcamLandmarksProps {
-  // Fires on every landmark message from the backend (including gesture
-  // classification once a model is trained). Audio/gesture logic lives in
-  // whoever consumes this — this component only does camera + perception.
+  // Fires on every recognized frame (including gesture classification from
+  // the pretrained model). Audio/rule logic lives in whoever consumes this —
+  // this component only does camera + perception, entirely client-side.
   onLandmarks?: (data: LandmarkData) => void;
 }
 
 const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const captureCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const frameIntervalRef = useRef<number | null>(null);
-  const awaitingResponseRef = useRef(false);
+  const recognizerRef = useRef<GestureRecognizer | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const lastVideoTimeRef = useRef(-1);
 
-  const [isConnected, setIsConnected] = useState(false);
+  const [isModelReady, setIsModelReady] = useState(false);
   const [isWebcamActive, setIsWebcamActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [landmarkData, setLandmarkData] = useState<LandmarkData | null>(null);
+
+  // Load the gesture recognizer once (memoized in lib/gestureRecognition, so
+  // this is cheap even across remounts) — separate from camera startup so a
+  // slow model load doesn't block the webcam preview from showing.
+  useEffect(() => {
+    let cancelled = false;
+    loadGestureRecognizer()
+      .then((recognizer) => {
+        if (!cancelled) {
+          recognizerRef.current = recognizer;
+          setIsModelReady(true);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setError('Failed to load gesture model: ' + String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Start webcam
   const startWebcam = useCallback(async () => {
@@ -55,118 +76,6 @@ const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks }) => {
       setIsWebcamActive(false);
     }
   }, []);
-
-  // Capture the current video frame and send it to the backend as a JPEG.
-  // Gated by awaitingResponseRef so we never have more than one frame in flight —
-  // otherwise frames queue up faster than the backend can process them and
-  // detection lags further and further behind the live video.
-  const sendFrame = useCallback(() => {
-    const video = videoRef.current;
-    const ws = wsRef.current;
-    if (
-      awaitingResponseRef.current ||
-      !video ||
-      video.readyState < 2 ||
-      !ws ||
-      ws.readyState !== WebSocket.OPEN
-    ) {
-      return;
-    }
-
-    if (!captureCanvasRef.current) {
-      captureCanvasRef.current = document.createElement('canvas');
-    }
-    const canvas = captureCanvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    canvas.toBlob(
-      (blob) => {
-        if (blob && wsRef.current?.readyState === WebSocket.OPEN) {
-          awaitingResponseRef.current = true;
-          wsRef.current.send(blob);
-        }
-      },
-      'image/jpeg',
-      0.7
-    );
-  }, []);
-
-  const stopFrameLoop = useCallback(() => {
-    if (frameIntervalRef.current !== null) {
-      window.clearInterval(frameIntervalRef.current);
-      frameIntervalRef.current = null;
-    }
-  }, []);
-
-  // Connect to WebSocket
-  const connectWebSocket = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      return;
-    }
-
-    try {
-      const ws = new WebSocket('ws://localhost:8000/ws/landmarks');
-
-      ws.onopen = () => {
-        console.log('WebSocket connected');
-        setIsConnected(true);
-        setError(null);
-        stopFrameLoop();
-        awaitingResponseRef.current = false;
-        // Interval is just a "try to send" tick; awaitingResponseRef in sendFrame
-        // is what actually paces sending to match the backend's real throughput.
-        frameIntervalRef.current = window.setInterval(sendFrame, 1000 / 30);
-      };
-
-      ws.onmessage = (event) => {
-        awaitingResponseRef.current = false;
-        try {
-          const data: LandmarkData = JSON.parse(event.data);
-          if (data.error) {
-            setError(data.error);
-          } else {
-            setLandmarkData(data);
-            onLandmarks?.(data);
-          }
-        } catch (err) {
-          console.error('Failed to parse WebSocket message:', err);
-        }
-      };
-
-      ws.onclose = () => {
-        console.log('WebSocket disconnected');
-        setIsConnected(false);
-        stopFrameLoop();
-      };
-
-      ws.onerror = (err) => {
-        console.error('WebSocket error:', err);
-        setError('WebSocket connection failed');
-        setIsConnected(false);
-        stopFrameLoop();
-      };
-
-      wsRef.current = ws;
-    } catch {
-      setError('Failed to create WebSocket connection');
-      setIsConnected(false);
-    }
-  }, [sendFrame, stopFrameLoop, onLandmarks]);
-
-  // Disconnect WebSocket
-  const disconnectWebSocket = useCallback(() => {
-    stopFrameLoop();
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-      setIsConnected(false);
-    }
-  }, [stopFrameLoop]);
 
   // Draw landmarks on canvas
   const drawLandmarks = useCallback(() => {
@@ -212,7 +121,7 @@ const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks }) => {
         ctx.fillText(index.toString(), x + 8, y - 8);
       });
 
-      // Draw hand label (handedness, plus classified gesture once trained)
+      // Draw hand label (handedness, plus classified gesture once available)
       if (hand.landmarks.length > 0) {
         const wrist = hand.landmarks[0];
         const labelX = wrist.x * canvas.width;
@@ -283,24 +192,52 @@ const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, [drawLandmarks]);
 
-  // Auto-start webcam and connect to backend on mount
+  // Auto-start webcam on mount
   useEffect(() => {
     startWebcam();
   }, [startWebcam]);
 
+  // The recognition loop: run entirely locally against the <video> element,
+  // no server round-trip. Gated on video.currentTime actually advancing so
+  // we don't reprocess the same frame twice when the render loop outpaces
+  // the webcam's real frame rate.
   useEffect(() => {
-    if (isWebcamActive) {
-      connectWebSocket();
-    }
-  }, [isWebcamActive, connectWebSocket]);
+    if (!isWebcamActive || !isModelReady) return;
 
-  // Cleanup on unmount
+    const tick = () => {
+      const video = videoRef.current;
+      const recognizer = recognizerRef.current;
+      if (
+        video &&
+        recognizer &&
+        video.readyState >= 2 &&
+        video.currentTime !== lastVideoTimeRef.current
+      ) {
+        lastVideoTimeRef.current = video.currentTime;
+        const hands = recognizeFrame(recognizer, video, performance.now());
+        const data: LandmarkData = { timestamp: Date.now() / 1000, hands };
+        setLandmarkData(data);
+        onLandmarks?.(data);
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, [isWebcamActive, isModelReady, onLandmarks]);
+
+  // Cleanup on unmount. Note: the recognizer itself is a module-level
+  // singleton (see lib/gestureRecognition) and deliberately isn't closed
+  // here — closing it would break a remount (e.g. React StrictMode's
+  // mount/unmount/remount in dev) since the cached promise would resolve to
+  // an already-closed instance.
   useEffect(() => {
     return () => {
       stopWebcam();
-      disconnectWebSocket();
     };
-  }, [stopWebcam, disconnectWebSocket]);
+  }, [stopWebcam]);
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -310,9 +247,9 @@ const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks }) => {
           <div className={`w-3 h-3 rounded-full ${isWebcamActive ? 'bg-green-500' : 'bg-red-500'}`} />
           Webcam: {isWebcamActive ? 'Active' : 'Inactive'}
         </div>
-        <div className={`flex items-center gap-2 ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
-          <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-          Backend: {isConnected ? 'Connected' : 'Disconnected'}
+        <div className={`flex items-center gap-2 ${isModelReady ? 'text-green-600' : 'text-amber-600'}`}>
+          <div className={`w-3 h-3 rounded-full ${isModelReady ? 'bg-green-500' : 'bg-amber-500'}`} />
+          Gesture model: {isModelReady ? 'Ready' : 'Loading…'}
         </div>
       </div>
 

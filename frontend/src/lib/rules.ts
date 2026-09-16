@@ -25,6 +25,17 @@ export interface MusicalAction {
   notes: string[]; // 1 note for note/bass, 3 for chord/arpeggio, 0 for sustain_toggle
 }
 
+// Always available, zero setup: 'pinch' is pure geometry (lib/notes.ts),
+// the rest come from MediaPipe's pretrained recognizer (lib/gestureRecognition.ts).
+// A visitor's taught gestures (lib/customGestures.ts) are added on top of this list.
+export const BASE_GESTURE_LABELS = ['fist', 'open_palm', 'pinch', 'point', 'peace', 'thumbs_up'];
+
+// Fallback assigned to a newly taught custom gesture until the visitor edits it.
+export const DEFAULT_CUSTOM_RULE: GestureRule = {
+  action: 'note',
+  octaveRange: { min: 3, max: 5 },
+};
+
 export const DEFAULT_RULES: Record<string, GestureRule> = {
   fist: { action: 'bass', octaveRange: { min: 2, max: 2 } },
   open_palm: { action: 'chord', voicing: 'close', octaveRange: { min: 3, max: 4 } },

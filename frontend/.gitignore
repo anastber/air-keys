@@ -34,3 +34,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# MediaPipe assets provisioned by scripts/setup-mediapipe.mjs (postinstall) —
+# too large for git, reproducible from node_modules + a one-time download.
+/public/mediapipe-wasm/
+/public/models/*.task

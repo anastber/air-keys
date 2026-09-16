@@ -5,38 +5,37 @@ import * as Tone from 'tone';
 import WebcamLandmarks from '@/components/WebcamLandmarks';
 import GestureTrainer from '@/components/GestureTrainer';
 import RuleEditor from '@/components/RuleEditor';
-import { isPinching, noteForHeight as legacyNoteForHeight } from '@/lib/notes';
-import { DEFAULT_RULES, resolveAction, type GestureRule } from '@/lib/rules';
-import { fetchGestureStatus, type GestureStatus } from '@/lib/gestureApi';
+import { isPinching } from '@/lib/notes';
+import { predictCustomGesture, customGestureLabels } from '@/lib/customGestures';
+import {
+  BASE_GESTURE_LABELS,
+  DEFAULT_CUSTOM_RULE,
+  DEFAULT_RULES,
+  resolveAction,
+  type GestureRule,
+} from '@/lib/rules';
 import type { LandmarkData } from '@/lib/types';
 
-// Ties the three layers together: WebcamLandmarks (perception), the gesture
-// classifier's output riding along on the same stream, and rules (control)
-// that turn a recognized gesture into a Tone.js action.
-//
-// Until a classifier is trained, hands.gesture is absent on every message
-// (see backend.api.main), so playback falls back to the original raw-pinch
-// behavior — the app is always playable, gestures just get richer once
-// you've trained some.
+// Ties the layers together, per hand, per frame, in one priority chain:
+//   1. a gesture the visitor taught themselves (client-side kNN, private to
+//      their browser) — takes priority since it's the one they chose to add
+//   2. pinch — pure thumb-index distance, no model at all, always available
+//   3. MediaPipe's pretrained canned pose — works for anyone, zero setup
+// Whichever resolves fires a rule (lib/rules.ts) once per gesture *change*,
+// not every frame it's held.
 const Instrument: React.FC = () => {
   const [rules, setRules] = useState<Record<string, GestureRule>>(DEFAULT_RULES);
-  const [status, setStatus] = useState<GestureStatus | null>(null);
+  const [customLabels, setCustomLabels] = useState<string[]>([]);
   const [currentHand, setCurrentHand] = useState<LandmarkData['hands'][number] | null>(null);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [lastAction, setLastAction] = useState<string | null>(null);
 
   const synthRef = useRef<Tone.PolySynth | null>(null);
   const gestureStateRef = useRef<Record<string, string | null>>({});
-  const pinchStateRef = useRef<Record<string, boolean>>({});
   const sustainRef = useRef(false);
 
   useEffect(() => {
-    fetchGestureStatus()
-      .then(setStatus)
-      .catch(() => {
-        // No trained model / backend not up yet — the trainer/editor just
-        // stay hidden until status is available.
-      });
+    setCustomLabels(customGestureLabels());
   }, []);
 
   const enableAudio = useCallback(async () => {
@@ -58,42 +57,36 @@ const Instrument: React.FC = () => {
         if (hand.landmarks.length < 21) return;
         const wrist = hand.landmarks[0];
 
-        if (hand.gesture) {
-          // Trained-classifier path: act once per gesture change, not every
-          // frame the gesture is held (otherwise a pose re-triggers ~15x/sec).
-          const prevGesture = gestureStateRef.current[hand.handedness] ?? null;
-          if (hand.gesture !== prevGesture) {
-            const rule = rules[hand.gesture];
-            if (rule) {
-              const action = resolveAction(rule, wrist.y);
-              if (action.type === 'sustain_toggle') {
-                sustainRef.current = !sustainRef.current;
-                setLastAction(`${hand.gesture} -> sustain ${sustainRef.current ? 'on' : 'off'}`);
-              } else if (action.type === 'arpeggio') {
-                action.notes.forEach((note, i) => {
-                  setTimeout(() => synthRef.current?.triggerAttackRelease(note, '16n'), i * 90);
-                });
-                setLastAction(`${hand.gesture} -> arpeggio: ${action.notes.join(' ')}`);
-              } else {
-                synthRef.current?.triggerAttackRelease(action.notes, duration);
-                setLastAction(`${hand.gesture} -> ${action.type}: ${action.notes.join(' ')}`);
-              }
+        // Priority chain: taught gesture > pinch > canned pose > nothing.
+        const custom = predictCustomGesture(hand.landmarks, hand.handedness);
+        const thumbTip = hand.landmarks[4];
+        const indexTip = hand.landmarks[8];
+        const label = custom
+          ? custom.label
+          : isPinching(thumbTip, indexTip)
+            ? 'pinch'
+            : (hand.gesture ?? null);
+
+        const prevLabel = gestureStateRef.current[hand.handedness] ?? null;
+        if (label !== prevLabel && label) {
+          const rule = rules[label];
+          if (rule) {
+            const action = resolveAction(rule, wrist.y);
+            if (action.type === 'sustain_toggle') {
+              sustainRef.current = !sustainRef.current;
+              setLastAction(`${label} -> sustain ${sustainRef.current ? 'on' : 'off'}`);
+            } else if (action.type === 'arpeggio') {
+              action.notes.forEach((note, i) => {
+                setTimeout(() => synthRef.current?.triggerAttackRelease(note, '16n'), i * 90);
+              });
+              setLastAction(`${label} -> arpeggio: ${action.notes.join(' ')}`);
+            } else {
+              synthRef.current?.triggerAttackRelease(action.notes, duration);
+              setLastAction(`${label} -> ${action.type}: ${action.notes.join(' ')}`);
             }
           }
-          gestureStateRef.current[hand.handedness] = hand.gesture;
-        } else {
-          // Legacy fallback while no classifier is trained yet.
-          const thumbTip = hand.landmarks[4];
-          const indexTip = hand.landmarks[8];
-          const pinched = isPinching(thumbTip, indexTip);
-          const wasPinched = pinchStateRef.current[hand.handedness] ?? false;
-          if (pinched && !wasPinched) {
-            const note = legacyNoteForHeight(wrist.y);
-            synthRef.current?.triggerAttackRelease(note, '8n');
-            setLastAction(`pinch -> note: ${note}`);
-          }
-          pinchStateRef.current[hand.handedness] = pinched;
         }
+        gestureStateRef.current[hand.handedness] = label;
       });
     },
     [isAudioEnabled, rules]
@@ -102,6 +95,15 @@ const Instrument: React.FC = () => {
   const updateRule = useCallback((label: string, patch: Partial<GestureRule>) => {
     setRules((prev) => ({ ...prev, [label]: { ...prev[label], ...patch } }));
   }, []);
+
+  // Give a newly taught gesture a default rule so it shows up (and does
+  // something) in the editor immediately, without waiting for manual setup.
+  const handleGestureRecorded = useCallback((label: string) => {
+    setCustomLabels(customGestureLabels());
+    setRules((prev) => (prev[label] ? prev : { ...prev, [label]: DEFAULT_CUSTOM_RULE }));
+  }, []);
+
+  const allLabels = [...BASE_GESTURE_LABELS, ...customLabels];
 
   return (
     <div className="flex flex-col items-center gap-6 p-4">
@@ -120,20 +122,14 @@ const Instrument: React.FC = () => {
 
       {lastAction && <div className="text-sm font-mono text-gray-700">{lastAction}</div>}
 
-      <div className="text-sm text-gray-600 max-w-md text-center">
-        {status?.model_trained ? (
-          <p>The gesture rules below drive playback. Retrain any time as you add more samples.</p>
-        ) : (
-          <p>
-            No gesture model trained yet — pinch your thumb and index finger to play a note
-            (hand height sets pitch) while you build a training set below.
-          </p>
-        )}
-      </div>
+      <p className="text-sm text-gray-600 max-w-md text-center">
+        Pinch, fist, open palm, point, peace, or thumbs up all work immediately — no
+        setup. Teach it a gesture of your own below to add to the set.
+      </p>
 
       <div className="flex flex-wrap justify-center gap-4">
-        <GestureTrainer currentHand={currentHand} status={status} onStatusChange={setStatus} />
-        <RuleEditor labels={status?.labels ?? []} rules={rules} onChange={updateRule} />
+        <GestureTrainer currentHand={currentHand} onGestureRecorded={handleGestureRecorded} />
+        <RuleEditor labels={allLabels} rules={rules} onChange={updateRule} />
       </div>
     </div>
   );
