@@ -63,11 +63,7 @@ const GestureTrainer: React.FC<GestureTrainerProps> = ({ currentHand, onGestureR
   const progress = recordingLabel ? recordedCount / SAMPLES_PER_RECORDING : 0;
 
   return (
-    <div className="ak-glass rounded-2xl p-5 w-full max-w-sm flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <span className="text-lg">🧠</span>
-        <h3 className="font-semibold text-ak-text">Teach a Gesture</h3>
-      </div>
+    <div className="flex flex-col gap-3">
       <p className="text-sm text-ak-muted">
         Name a pose, hold it in frame, and record ~20 samples. Stored only in this
         browser — nothing is sent anywhere.

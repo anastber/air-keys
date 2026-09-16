@@ -11,14 +11,25 @@ import type { LandmarkData } from '@/lib/types';
 const RIGHT_COLOR = '#22d3ee';
 const LEFT_COLOR = '#f472b6';
 
+export interface StageStatus {
+  isWebcamActive: boolean;
+  isModelReady: boolean;
+  error: string | null;
+  handCount: number;
+}
+
 interface WebcamLandmarksProps {
   // Fires on every recognized frame (including gesture classification from
   // the pretrained model). Audio/rule logic lives in whoever consumes this —
   // this component only does camera + perception, entirely client-side.
   onLandmarks?: (data: LandmarkData) => void;
+  // Bubbles webcam/model/error/hand-count state up so the parent can render
+  // status pills and overlays positioned over the video however it likes —
+  // this component owns no chrome of its own, just the feed.
+  onStatusChange?: (status: StageStatus) => void;
 }
 
-const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks }) => {
+const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks, onStatusChange }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const recognizerRef = useRef<GestureRecognizer | null>(null);
@@ -29,6 +40,15 @@ const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks }) => {
   const [isWebcamActive, setIsWebcamActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [landmarkData, setLandmarkData] = useState<LandmarkData | null>(null);
+
+  useEffect(() => {
+    onStatusChange?.({
+      isWebcamActive,
+      isModelReady,
+      error,
+      handCount: landmarkData?.hands.length ?? 0,
+    });
+  }, [isWebcamActive, isModelReady, error, landmarkData, onStatusChange]);
 
   // Load the gesture recognizer once (memoized in lib/gestureRecognition, so
   // this is cheap even across remounts) — separate from camera startup so a
@@ -253,70 +273,20 @@ const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks }) => {
     };
   }, [stopWebcam]);
 
+  // Deliberately no chrome here — just the feed. The parent (Instrument's
+  // "stage" card) owns status pills, start/error overlays, and layout.
   return (
-    <div className="flex flex-col items-center gap-4">
-      {/* Status pills */}
-      <div className="flex flex-wrap justify-center gap-2 text-xs">
-        <StatusPill ok={isWebcamActive} okLabel="Webcam active" badLabel="Webcam inactive" />
-        <StatusPill
-          ok={isModelReady}
-          okLabel="Gesture model ready"
-          badLabel="Loading model…"
-          pending={!isModelReady}
-        />
-        {landmarkData && (
-          <span className="ak-glass rounded-full px-3 py-1 text-ak-muted">
-            {landmarkData.hands.length === 0
-              ? 'No hands in frame'
-              : `${landmarkData.hands.length} hand${landmarkData.hands.length > 1 ? 's' : ''} tracked`}
-          </span>
-        )}
-      </div>
-
-      {/* Error display */}
-      {error && (
-        <div className="bg-ak-red/10 border border-ak-red/40 text-ak-red px-4 py-3 rounded-xl max-w-md text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* Video and Canvas container */}
-      <div className="relative rounded-3xl p-1.5 ak-glass shadow-[0_0_60px_-15px_rgba(168,85,247,0.35)]">
-        <div className="relative overflow-hidden rounded-2xl">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="block max-w-full h-auto scale-x-[-1]"
-            style={{ maxWidth: '640px', maxHeight: '480px' }}
-          />
-          <canvas
-            ref={canvasRef}
-            className="absolute top-0 left-0 pointer-events-none scale-x-[-1]"
-          />
-        </div>
-      </div>
+    <div className="relative">
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="block w-full h-auto scale-x-[-1]"
+      />
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none scale-x-[-1]" />
     </div>
   );
 };
-
-const StatusPill: React.FC<{
-  ok: boolean;
-  okLabel: string;
-  badLabel: string;
-  pending?: boolean;
-}> = ({ ok, okLabel, badLabel, pending }) => (
-  <span className="ak-glass flex items-center gap-1.5 rounded-full px-3 py-1">
-    <span
-      className={`w-1.5 h-1.5 rounded-full ${
-        ok ? 'bg-ak-emerald' : pending ? 'bg-ak-amber animate-pulse' : 'bg-ak-red'
-      }`}
-    />
-    <span className={ok ? 'text-ak-text' : pending ? 'text-ak-amber' : 'text-ak-red'}>
-      {ok ? okLabel : badLabel}
-    </span>
-  </span>
-);
 
 export default WebcamLandmarks;

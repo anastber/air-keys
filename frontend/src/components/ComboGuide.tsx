@@ -9,11 +9,7 @@ interface ComboGuideProps {
 }
 
 const ComboGuide: React.FC<ComboGuideProps> = ({ combos }) => (
-  <div className="ak-glass rounded-2xl p-5 w-full max-w-sm flex flex-col gap-3">
-    <div className="flex items-center gap-2">
-      <span className="text-lg">🎶</span>
-      <h3 className="font-semibold text-ak-text">Try These Combos</h3>
-    </div>
+  <div className="flex flex-col gap-3">
     <p className="text-sm text-ak-muted">
       Do 3 gestures in order, either hand, within a few seconds — each still plays
       normally, plus a bonus tune on the third.

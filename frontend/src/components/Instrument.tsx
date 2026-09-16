@@ -2,10 +2,8 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as Tone from 'tone';
-import WebcamLandmarks from '@/components/WebcamLandmarks';
-import GestureTrainer from '@/components/GestureTrainer';
-import RuleEditor from '@/components/RuleEditor';
-import ComboGuide from '@/components/ComboGuide';
+import WebcamLandmarks, { type StageStatus } from '@/components/WebcamLandmarks';
+import ControlDeck from '@/components/ControlDeck';
 import AudioVisualizer from '@/components/AudioVisualizer';
 import { isPinching } from '@/lib/notes';
 import { gestureEmoji } from '@/lib/gestureIcons';
@@ -34,7 +32,15 @@ const ACTION_ICON: Record<string, string> = {
   arpeggio: '🎼',
 };
 
-// Ties the layers together, per hand, per frame, in one priority chain:
+// Layout, top to bottom: a compact header, then a wide "stage" (the camera
+// feed — the actual point of the app) paired with a tabbed "control deck"
+// for the three secondary panels (combos / teach / rules), side by side on
+// desktop and stacked stage-first on mobile. Rationale for putting the
+// three panels behind tabs rather than as three stacked cards: they serve
+// different moments (reference vs. input vs. configuration) and don't need
+// to all be visible while someone is just trying to play.
+//
+// Gesture-to-audio priority chain, per hand, per frame:
 //   1. a gesture the visitor taught themselves (client-side kNN, private to
 //      their browser) — takes priority since it's the one they chose to add
 //   2. pinch — pure thumb-index distance, no model at all, always available
@@ -49,6 +55,12 @@ const Instrument: React.FC = () => {
   const [analyser, setAnalyser] = useState<Tone.Analyser | null>(null);
   const [lastAction, setLastAction] = useState<{ text: string; icon: string } | null>(null);
   const [actionSeq, setActionSeq] = useState(0);
+  const [stageStatus, setStageStatus] = useState<StageStatus>({
+    isWebcamActive: false,
+    isModelReady: false,
+    error: null,
+    handCount: 0,
+  });
 
   const synthRef = useRef<Tone.PolySynth | null>(null);
   const gestureStateRef = useRef<Record<string, string | null>>({});
@@ -145,10 +157,7 @@ const Instrument: React.FC = () => {
           if (combo) {
             recentGesturesRef.current = [];
             playCombo(combo);
-            announce(
-              `${combo.name}: ${combo.sequence.map(gestureEmoji).join(' ')}`,
-              '🎶'
-            );
+            announce(`${combo.name}: ${combo.sequence.map(gestureEmoji).join(' ')}`, '🎶');
           }
         }
         gestureStateRef.current[hand.handedness] = label;
@@ -171,67 +180,147 @@ const Instrument: React.FC = () => {
   const allLabels = [...BASE_GESTURE_LABELS, ...customLabels];
 
   return (
-    <div className="flex flex-col items-center gap-8 px-4 py-10 max-w-6xl mx-auto">
-      <header className="flex flex-col items-center gap-2 text-center">
-        <span className="ak-glass rounded-full px-3 py-1 text-xs text-ak-muted tracking-wide uppercase">
+    <div className="flex flex-col items-center gap-6 px-4 py-8 max-w-6xl mx-auto">
+      <header className="flex flex-col items-center gap-1.5 text-center">
+        <span className="ak-glass rounded-full px-3 py-1 text-[11px] text-ak-muted tracking-wide uppercase">
           Client-side AI · zero setup
         </span>
-        <h1 className="text-5xl sm:text-6xl font-bold ak-gradient-text tracking-tight py-1">
+        <h1 className="text-4xl sm:text-5xl font-bold ak-gradient-text tracking-tight py-1">
           AirKeys
         </h1>
-        <p className="text-ak-muted max-w-md">
+        <p className="text-ak-muted text-sm max-w-md">
           Wave, pinch, or fist-bump the air — your webcam turns it into music.
         </p>
       </header>
 
-      {!isAudioEnabled && (
-        <button
-          onClick={enableAudio}
-          className="relative px-6 py-3 rounded-full font-medium text-white bg-gradient-to-r from-ak-violet via-fuchsia-500 to-ak-cyan shadow-lg shadow-ak-violet/30 hover:scale-105 active:scale-100 transition-transform animate-glow-pulse"
-        >
-          🔈 Enable Sound to Begin
-        </button>
-      )}
+      <div className="w-full grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 items-start">
+        {/* Stage: the actual instrument */}
+        <div className="flex flex-col gap-3">
+          <div className="relative">
+            {/* Glow ring that flashes around the stage on every trigger,
+                keyed by actionSeq so each new trigger restarts the
+                animation. Gated on actionSeq > 0 so it doesn't also fire
+                once on initial mount. */}
+            {actionSeq > 0 && (
+              <div
+                key={actionSeq}
+                className="pointer-events-none absolute -inset-3 rounded-[2.5rem] animate-glow-pulse z-10"
+              />
+            )}
 
-      <div className="relative">
-        {/* Glow ring that flashes around the video on every trigger, keyed
-            by actionSeq so each new trigger restarts the animation. Gated on
-            actionSeq > 0 so it doesn't also fire once on initial mount. */}
-        {actionSeq > 0 && (
-          <div
-            key={actionSeq}
-            className="pointer-events-none absolute -inset-3 rounded-[2rem] animate-glow-pulse"
-          />
-        )}
-        <WebcamLandmarks onLandmarks={handleLandmarks} />
-      </div>
+            <div className="ak-glass rounded-3xl overflow-hidden shadow-[0_0_60px_-15px_rgba(168,85,247,0.35)]">
+              <div className="relative">
+                <WebcamLandmarks onLandmarks={handleLandmarks} onStatusChange={setStageStatus} />
 
-      <div className="w-full max-w-[640px] ak-glass rounded-2xl px-3 py-2">
-        <AudioVisualizer analyser={analyser} />
-      </div>
+                {/* Error takes precedence over the "tap to start" prompt.
+                    Rendered before the status pills below so the dim/blur
+                    layer sits *under* them, not on top washing them out. */}
+                {stageStatus.error ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-ak-bg/80 backdrop-blur-sm p-6 text-center">
+                    <p className="text-ak-red text-sm max-w-xs">{stageStatus.error}</p>
+                  </div>
+                ) : (
+                  !isAudioEnabled && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-ak-bg/60 backdrop-blur-sm">
+                      <button
+                        onClick={enableAudio}
+                        className="px-6 py-3 rounded-full font-medium text-white bg-gradient-to-r from-ak-violet via-fuchsia-500 to-ak-cyan shadow-lg shadow-ak-violet/30 hover:scale-105 active:scale-100 transition-transform animate-glow-pulse"
+                      >
+                        🔈 Tap to Start Playing
+                      </button>
+                    </div>
+                  )
+                )}
 
-      {lastAction && (
-        <div
-          key={actionSeq}
-          className="ak-glass flex items-center gap-2 rounded-full px-4 py-2 text-sm font-mono text-ak-text animate-fade-in-up"
-        >
-          <span className="text-base">{lastAction.icon}</span>
-          {lastAction.text}
+                {/* Status pills, overlaid top-left, above the dim layer */}
+                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 max-w-[80%]">
+                  <StatusPill
+                    ok={stageStatus.isWebcamActive}
+                    okLabel="Webcam active"
+                    badLabel="Webcam inactive"
+                  />
+                  <StatusPill
+                    ok={stageStatus.isModelReady}
+                    okLabel="Model ready"
+                    badLabel="Loading model…"
+                    pending={!stageStatus.isModelReady}
+                  />
+                  {stageStatus.isWebcamActive && (
+                    <span className="ak-glass rounded-full px-3 py-1 text-xs text-ak-muted">
+                      {stageStatus.handCount === 0
+                        ? 'No hands in frame'
+                        : `${stageStatus.handCount} hand${stageStatus.handCount > 1 ? 's' : ''}`}
+                    </span>
+                  )}
+                </div>
+
+                {/* Last action, overlaid bottom-center so it never shifts layout */}
+                {lastAction && (
+                  <div
+                    key={actionSeq}
+                    className="absolute bottom-3 left-1/2 -translate-x-1/2 ak-glass flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-mono text-ak-text animate-fade-in-up max-w-[90%]"
+                  >
+                    <span className="text-base shrink-0">{lastAction.icon}</span>
+                    <span className="truncate">{lastAction.text}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Visualizer strip, flush against the video, same card */}
+              <div className="border-t border-white/[0.06] px-3 py-2">
+                <AudioVisualizer analyser={analyser} />
+              </div>
+            </div>
+          </div>
+
+          <p className="text-sm text-ak-muted text-center px-2">
+            Pinch, fist, open palm, point, peace, or thumbs up all work immediately —
+            no setup. Teach it a gesture of your own in the deck to add to the set.
+          </p>
         </div>
-      )}
 
-      <p className="text-sm text-ak-muted max-w-md text-center">
-        Pinch, fist, open palm, point, peace, or thumbs up all work immediately — no
-        setup. Teach it a gesture of your own below to add to the set.
-      </p>
-
-      <div className="flex flex-wrap justify-center gap-4 w-full">
-        <ComboGuide combos={COMBOS} />
-        <GestureTrainer currentHand={currentHand} onGestureRecorded={handleGestureRecorded} />
-        <RuleEditor labels={allLabels} rules={rules} onChange={updateRule} />
+        {/* Control deck: combos / teach / rules */}
+        <ControlDeck
+          combos={COMBOS}
+          currentHand={currentHand}
+          onGestureRecorded={handleGestureRecorded}
+          labels={allLabels}
+          rules={rules}
+          onRuleChange={updateRule}
+        />
       </div>
+
+      <footer className="text-xs text-ak-subtle text-center pt-2">
+        Built with MediaPipe, Tone.js, and Next.js ·{' '}
+        <a
+          href="https://github.com/anastber/air-keys"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-ak-muted"
+        >
+          View source
+        </a>
+      </footer>
     </div>
   );
 };
+
+const StatusPill: React.FC<{
+  ok: boolean;
+  okLabel: string;
+  badLabel: string;
+  pending?: boolean;
+}> = ({ ok, okLabel, badLabel, pending }) => (
+  <span className="ak-glass flex items-center gap-1.5 rounded-full px-3 py-1 text-xs">
+    <span
+      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+        ok ? 'bg-ak-emerald' : pending ? 'bg-ak-amber animate-pulse' : 'bg-ak-red'
+      }`}
+    />
+    <span className={ok ? 'text-ak-text' : pending ? 'text-ak-amber' : 'text-ak-red'}>
+      {ok ? okLabel : badLabel}
+    </span>
+  </span>
+);
 
 export default Instrument;

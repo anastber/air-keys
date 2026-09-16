@@ -19,11 +19,7 @@ const numberClass =
   'bg-white/[0.06] border border-white/10 rounded-lg w-12 px-1.5 py-1 text-ak-text text-xs text-center focus:outline-none focus:ring-1 focus:ring-ak-violet/60 focus:border-ak-violet/60';
 
 const RuleEditor: React.FC<RuleEditorProps> = ({ labels, rules, onChange }) => (
-  <div className="ak-glass rounded-2xl p-5 w-full max-w-sm flex flex-col gap-3">
-    <div className="flex items-center gap-2">
-      <span className="text-lg">🎛️</span>
-      <h3 className="font-semibold text-ak-text">Gesture Rules</h3>
-    </div>
+  <div className="flex flex-col gap-3">
     <p className="text-sm text-ak-muted">
       What each gesture plays. Edit live — a change applies the next time you make
       that gesture, no retraining needed.
