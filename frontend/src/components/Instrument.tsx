@@ -5,16 +5,25 @@ import * as Tone from 'tone';
 import WebcamLandmarks from '@/components/WebcamLandmarks';
 import GestureTrainer from '@/components/GestureTrainer';
 import RuleEditor from '@/components/RuleEditor';
+import ComboGuide from '@/components/ComboGuide';
 import { isPinching } from '@/lib/notes';
 import { predictCustomGesture, customGestureLabels } from '@/lib/customGestures';
 import {
   BASE_GESTURE_LABELS,
+  COMBOS,
   DEFAULT_CUSTOM_RULE,
   DEFAULT_RULES,
+  matchCombo,
   resolveAction,
+  type Combo,
   type GestureRule,
 } from '@/lib/rules';
 import type { LandmarkData } from '@/lib/types';
+
+// How long a partial combo stays "live" before it's forgotten — long enough
+// to perform 3 deliberate gestures, short enough that idle play doesn't
+// coincidentally complete one.
+const COMBO_WINDOW_MS = 6000;
 
 // Ties the layers together, per hand, per frame, in one priority chain:
 //   1. a gesture the visitor taught themselves (client-side kNN, private to
@@ -33,6 +42,15 @@ const Instrument: React.FC = () => {
   const synthRef = useRef<Tone.PolySynth | null>(null);
   const gestureStateRef = useRef<Record<string, string | null>>({});
   const sustainRef = useRef(false);
+  const recentGesturesRef = useRef<{ label: string; time: number }[]>([]);
+
+  const playCombo = useCallback((combo: Combo) => {
+    let delay = 200; // let the triggering gesture's own note ring briefly first
+    combo.melody.forEach((step) => {
+      setTimeout(() => synthRef.current?.triggerAttackRelease(step.notes, step.duration), delay);
+      delay += combo.stepDelayMs;
+    });
+  }, []);
 
   useEffect(() => {
     setCustomLabels(customGestureLabels());
@@ -85,11 +103,26 @@ const Instrument: React.FC = () => {
               setLastAction(`${label} -> ${action.type}: ${action.notes.join(' ')}`);
             }
           }
+
+          // Combo tracking: a single timeline shared across both hands — do
+          // 3 specific gestures in order, from either hand, within the
+          // window, and a bonus tune plays on top of the action above.
+          const now = Date.now();
+          const recent = [...recentGesturesRef.current, { label, time: now }].filter(
+            (e) => now - e.time < COMBO_WINDOW_MS
+          );
+          recentGesturesRef.current = recent.slice(-6);
+          const combo = matchCombo(recent.map((e) => e.label));
+          if (combo) {
+            recentGesturesRef.current = [];
+            playCombo(combo);
+            setLastAction(`🎶 combo: ${combo.name}!`);
+          }
         }
         gestureStateRef.current[hand.handedness] = label;
       });
     },
-    [isAudioEnabled, rules]
+    [isAudioEnabled, rules, playCombo]
   );
 
   const updateRule = useCallback((label: string, patch: Partial<GestureRule>) => {
@@ -128,6 +161,7 @@ const Instrument: React.FC = () => {
       </p>
 
       <div className="flex flex-wrap justify-center gap-4">
+        <ComboGuide combos={COMBOS} />
         <GestureTrainer currentHand={currentHand} onGestureRecorded={handleGestureRecorded} />
         <RuleEditor labels={allLabels} rules={rules} onChange={updateRule} />
       </div>

@@ -45,6 +45,71 @@ export const DEFAULT_RULES: Record<string, GestureRule> = {
   thumbs_up: { action: 'sustain_toggle', octaveRange: { min: 3, max: 3 } },
 };
 
+// --- Combos ------------------------------------------------------------
+// A fun, low-risk addition on top of single-gesture rules: do 3 specific
+// gestures in order (either hand, within a few seconds) and a short
+// hand-composed tune plays on top of whatever those gestures normally do.
+// Purely additive — doesn't change single-gesture behavior at all — and
+// it's the concrete "here's how you actually play something" demo moment
+// for a new visitor, surfaced by <ComboGuide>.
+
+export interface ComboStep {
+  notes: string | string[]; // a single note, or several for a chord
+  duration: string;
+}
+
+export interface Combo {
+  name: string;
+  sequence: string[]; // 3 gesture labels, in order
+  melody: ComboStep[];
+  stepDelayMs: number; // pacing between melody steps
+}
+
+export const COMBOS: Combo[] = [
+  {
+    name: 'Rise',
+    sequence: ['fist', 'open_palm', 'peace'],
+    stepDelayMs: 110,
+    melody: [
+      { notes: 'C4', duration: '16n' },
+      { notes: 'E4', duration: '16n' },
+      { notes: 'G4', duration: '16n' },
+      { notes: 'C5', duration: '16n' },
+      { notes: 'E5', duration: '8n' },
+    ],
+  },
+  {
+    name: 'Bounce',
+    sequence: ['pinch', 'point', 'thumbs_up'],
+    stepDelayMs: 130,
+    melody: [
+      { notes: 'E5', duration: '16n' },
+      { notes: 'C5', duration: '16n' },
+      { notes: 'G4', duration: '16n' },
+      { notes: 'C5', duration: '16n' },
+      { notes: 'E5', duration: '8n' },
+    ],
+  },
+  {
+    name: 'Cadence',
+    sequence: ['open_palm', 'fist', 'peace'],
+    stepDelayMs: 260,
+    melody: [
+      { notes: ['C4', 'E4', 'G4'], duration: '8n' },
+      { notes: ['F3', 'A3', 'C4'], duration: '8n' },
+      { notes: ['G3', 'B3', 'D4'], duration: '8n' },
+      { notes: ['C4', 'E4', 'G4'], duration: '4n' },
+    ],
+  },
+];
+
+/** Does the tail of this gesture-onset history match a combo, in order? */
+export function matchCombo(recentLabels: string[]): Combo | null {
+  const tail = recentLabels.slice(-3);
+  if (tail.length < 3) return null;
+  return COMBOS.find((combo) => combo.sequence.every((g, i) => g === tail[i])) ?? null;
+}
+
 // --- Music theory helpers -------------------------------------------------
 // Everything below works in diatonic scale degrees rather than raw
 // semitones, so "third" and "fifth" always land on the right note of a C
