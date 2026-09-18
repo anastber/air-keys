@@ -19,6 +19,12 @@ export interface GestureRule {
   action: ActionType;
   voicing?: Voicing; // only meaningful for 'chord'
   octaveRange: OctaveRange; // ignored for 'sustain_toggle'
+  // Fixed scale degree (0 = do, 6 = ti, 7 = do an octave up) this gesture
+  // always plays, regardless of hand height — see "solfège keyboard" below.
+  // Omitted for taught/custom gestures, which keep the original continuous
+  // height-to-pitch mapping (pitchInputForHeight) since they aren't part of
+  // the fixed 8-note layout.
+  degree?: number;
 }
 
 export interface MusicalAction {
@@ -38,21 +44,39 @@ export const BASE_GESTURE_LABELS = ['fist', 'open_palm', 'pinch', 'point', 'peac
 export const TRAINED_GESTURE_LABELS = ['ok_sign', 'rock_on', 'call_me'];
 
 // Fallback assigned to a newly taught custom gesture until the visitor edits it.
+// No fixed `degree` — taught gestures keep the original continuous
+// height-to-pitch mapping across the octave range.
 export const DEFAULT_CUSTOM_RULE: GestureRule = {
   action: 'note',
   octaveRange: { min: 3, max: 5 },
 };
 
+// Solfège syllable for each fixed degree used below (do..ti, then do an
+// octave up) — shown in RuleEditor and SongGuide so the mapping is
+// learnable at a glance instead of memorized blind.
+export const SOLFEGE_SYLLABLES = ['do', 're', 'mi', 'fa', 'sol', 'la', 'ti', "do'"];
+
+// The 8 always-available non-sustain gestures (6 base + 2 of the 3 trained
+// — thumbs_up stays a sustain toggle) are laid out as a one-octave diatonic
+// "keyboard": each gesture always plays the same scale degree, regardless
+// of hand height. Earlier versions mapped hand height continuously to
+// pitch, which made hitting a *specific* target note (i.e. reproducing an
+// actual melody) unreliable — great for ambient soundscapes, unplayable
+// for "Twinkle Twinkle". Fixing the note to the gesture and leaving height
+// to (optionally) shift the octave — widen a gesture's octaveRange in the
+// Rules tab to bring that back — makes a known tune reproducible: hold
+// your hand steady and just cycle through gesture shapes. See SongGuide
+// for ready-made gesture sequences that only need this one octave.
 export const DEFAULT_RULES: Record<string, GestureRule> = {
-  fist: { action: 'bass', octaveRange: { min: 2, max: 2 } },
-  open_palm: { action: 'chord', voicing: 'close', octaveRange: { min: 3, max: 4 } },
-  pinch: { action: 'note', octaveRange: { min: 3, max: 5 } },
-  point: { action: 'arpeggio', octaveRange: { min: 4, max: 5 } },
-  peace: { action: 'chord', voicing: 'open', octaveRange: { min: 3, max: 4 } },
+  fist: { action: 'note', degree: 0, octaveRange: { min: 4, max: 4 } }, // do (C4)
+  point: { action: 'note', degree: 1, octaveRange: { min: 4, max: 4 } }, // re (D4)
+  peace: { action: 'note', degree: 2, octaveRange: { min: 4, max: 4 } }, // mi (E4)
+  open_palm: { action: 'note', degree: 3, octaveRange: { min: 4, max: 4 } }, // fa (F4)
+  pinch: { action: 'note', degree: 4, octaveRange: { min: 4, max: 4 } }, // sol (G4)
+  ok_sign: { action: 'note', degree: 5, octaveRange: { min: 4, max: 4 } }, // la (A4)
+  rock_on: { action: 'note', degree: 6, octaveRange: { min: 4, max: 4 } }, // ti (B4)
+  call_me: { action: 'note', degree: 7, octaveRange: { min: 4, max: 4 } }, // do' (C5)
   thumbs_up: { action: 'sustain_toggle', octaveRange: { min: 3, max: 3 } },
-  ok_sign: { action: 'note', octaveRange: { min: 4, max: 6 } },
-  rock_on: { action: 'arpeggio', octaveRange: { min: 3, max: 5 } },
-  call_me: { action: 'chord', voicing: 'close', octaveRange: { min: 2, max: 3 } },
 };
 
 // --- Combos ------------------------------------------------------------
@@ -159,25 +183,39 @@ function noteAtDegree(degree: number, baseOctave: number): string {
   return midiToNoteName(midi);
 }
 
-// Maps normalized hand height (0 = top of frame, 1 = bottom) to a scale
-// degree spanning the given octave range.
-function degreeForHeight(y: number, range: OctaveRange): number {
-  const totalDegrees = (range.max - range.min + 1) * 7;
-  return Math.min(totalDegrees - 1, Math.max(0, Math.floor((1 - y) * totalDegrees)));
+// Resolves a rule + hand height down to (scale degree, base octave):
+//   - fixed-degree gestures (rule.degree set): the degree never changes:
+//     height only picks which octave band within octaveRange to play it
+//     in (1 band = height has no effect at all, the default — see above).
+//   - taught/custom gestures (no rule.degree): the original continuous
+//     mapping, height sweeping the full degree range across octaveRange.
+function pitchInputForHeight(
+  rule: GestureRule,
+  y: number
+): { degree: number; baseOctave: number } {
+  const numBands = rule.octaveRange.max - rule.octaveRange.min + 1;
+  if (rule.degree !== undefined) {
+    const band = Math.min(numBands - 1, Math.max(0, Math.floor((1 - y) * numBands)));
+    return { degree: rule.degree, baseOctave: rule.octaveRange.min + band };
+  }
+  const totalDegrees = numBands * 7;
+  const degree = Math.min(totalDegrees - 1, Math.max(0, Math.floor((1 - y) * totalDegrees)));
+  return { degree, baseOctave: rule.octaveRange.min };
 }
 
-function noteForHeight(y: number, range: OctaveRange): string {
-  return noteAtDegree(degreeForHeight(y, range), range.min);
+function noteForHeight(rule: GestureRule, y: number): string {
+  const { degree, baseOctave } = pitchInputForHeight(rule, y);
+  return noteAtDegree(degree, baseOctave);
 }
 
-// Diatonic triad (root + stacked thirds) built on the scale degree at the
-// given height. 'open' voicing spreads the third up an octave for a wider,
-// less clustered sound.
-function triadForHeight(y: number, range: OctaveRange, voicing: Voicing): string[] {
-  const degree = degreeForHeight(y, range);
-  const root = noteAtDegree(degree, range.min);
-  const third = noteAtDegree(degree + 2, range.min);
-  const fifth = noteAtDegree(degree + 4, range.min);
+// Diatonic triad (root + stacked thirds) built on the rule's resolved scale
+// degree. 'open' voicing spreads the third up an octave for a wider, less
+// clustered sound.
+function triadForHeight(rule: GestureRule, y: number, voicing: Voicing): string[] {
+  const { degree, baseOctave } = pitchInputForHeight(rule, y);
+  const root = noteAtDegree(degree, baseOctave);
+  const third = noteAtDegree(degree + 2, baseOctave);
+  const fifth = noteAtDegree(degree + 4, baseOctave);
   return voicing === 'open' ? [root, fifth, transposeNote(third, 12)] : [root, third, fifth];
 }
 
@@ -188,14 +226,11 @@ export function resolveAction(rule: GestureRule, height: number): MusicalAction 
   switch (rule.action) {
     case 'note':
     case 'bass':
-      return { type: rule.action, notes: [noteForHeight(height, rule.octaveRange)] };
+      return { type: rule.action, notes: [noteForHeight(rule, height)] };
     case 'chord':
-      return {
-        type: 'chord',
-        notes: triadForHeight(height, rule.octaveRange, rule.voicing ?? 'close'),
-      };
+      return { type: 'chord', notes: triadForHeight(rule, height, rule.voicing ?? 'close') };
     case 'arpeggio':
-      return { type: 'arpeggio', notes: triadForHeight(height, rule.octaveRange, 'close') };
+      return { type: 'arpeggio', notes: triadForHeight(rule, height, 'close') };
     case 'sustain_toggle':
       return { type: 'sustain_toggle', notes: [] };
   }

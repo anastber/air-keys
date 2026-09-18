@@ -4,18 +4,22 @@ import React, { useState } from 'react';
 import ComboGuide from '@/components/ComboGuide';
 import GestureTrainer from '@/components/GestureTrainer';
 import RuleEditor from '@/components/RuleEditor';
+import SongGuide from '@/components/SongGuide';
 import type { Combo, GestureRule } from '@/lib/rules';
+import type { Song } from '@/lib/songs';
 import type { HandData } from '@/lib/types';
 
-type TabId = 'combos' | 'teach' | 'rules';
+type TabId = 'songs' | 'combos' | 'teach' | 'rules';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
+  { id: 'songs', label: 'Songs', icon: '🎵' },
   { id: 'combos', label: 'Combos', icon: '🎶' },
   { id: 'teach', label: 'Teach', icon: '🧠' },
   { id: 'rules', label: 'Rules', icon: '🎛️' },
 ];
 
 interface ControlDeckProps {
+  songs: Song[];
   combos: Combo[];
   currentHand: HandData | null;
   onGestureRecorded: (label: string) => void;
@@ -24,10 +28,11 @@ interface ControlDeckProps {
   onRuleChange: (label: string, patch: Partial<GestureRule>) => void;
 }
 
-// One shell, three panels. All three stay mounted the whole time — only
+// One shell, four panels. All four stay mounted the whole time — only
 // visibility toggles — specifically so switching away from "Teach" mid
 // recording doesn't reset that recording's progress.
 const ControlDeck: React.FC<ControlDeckProps> = ({
+  songs,
   combos,
   currentHand,
   onGestureRecorded,
@@ -35,7 +40,7 @@ const ControlDeck: React.FC<ControlDeckProps> = ({
   rules,
   onRuleChange,
 }) => {
-  const [active, setActive] = useState<TabId>('combos');
+  const [active, setActive] = useState<TabId>('songs');
 
   return (
     <div className="ak-glass rounded-2xl w-full flex flex-col overflow-hidden">
@@ -57,6 +62,9 @@ const ControlDeck: React.FC<ControlDeckProps> = ({
       </div>
 
       <div className="p-5">
+        <div className={active === 'songs' ? '' : 'hidden'}>
+          <SongGuide songs={songs} />
+        </div>
         <div className={active === 'combos' ? '' : 'hidden'}>
           <ComboGuide combos={combos} />
         </div>

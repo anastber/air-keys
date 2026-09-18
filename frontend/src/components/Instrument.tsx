@@ -20,6 +20,7 @@ import {
   type Combo,
   type GestureRule,
 } from '@/lib/rules';
+import { SONGS } from '@/lib/songs';
 import type { LandmarkData } from '@/lib/types';
 
 // How long a partial combo stays "live" before it's forgotten — long enough
@@ -104,7 +105,18 @@ const Instrument: React.FC = () => {
   const enableAudio = useCallback(async () => {
     await Tone.start();
     if (!synthRef.current) {
-      const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+      // A quick attack keeps single melody notes crisp (important now that
+      // most gestures play one fixed note rather than a sustained chord),
+      // and a touch of reverb gives them some room instead of sounding dry.
+      const synth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'triangle' },
+        envelope: { attack: 0.005, decay: 0.15, sustain: 0.25, release: 0.6 },
+      });
+      const reverb = new Tone.Reverb({ decay: 1.8, wet: 0.22 });
+      await reverb.generate();
+      synth.connect(reverb);
+      reverb.toDestination();
+
       const fft = new Tone.Analyser('fft', 64);
       synth.connect(fft);
       synthRef.current = synth;
@@ -292,14 +304,15 @@ const Instrument: React.FC = () => {
           </div>
 
           <p className="text-sm text-ak-muted text-center px-2">
-            Pinch, fist, open palm, point, peace, thumbs up, OK sign, rock on, or call me
-            all work immediately — no setup. Teach it a gesture of your own in the deck to
-            add to the set.
+            Fist, point, peace, open palm, pinch, OK sign, rock on, and call me each play
+            one fixed note (do through do) — cycle through them to play a real melody. See
+            the Songs tab for ready-made ones, or teach it a gesture of your own in the deck.
           </p>
         </div>
 
-        {/* Control deck: combos / teach / rules */}
+        {/* Control deck: songs / combos / teach / rules */}
         <ControlDeck
+          songs={SONGS}
           combos={COMBOS}
           currentHand={currentHand}
           onGestureRecorded={handleGestureRecorded}
