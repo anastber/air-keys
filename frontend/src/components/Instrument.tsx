@@ -244,6 +244,12 @@ const Instrument: React.FC = () => {
             one fixed note (do through do) — cycle through them to play a real melody. See
             the Songs tab for ready-made ones, or teach it a gesture of your own in the deck.
           </p>
+          <p className="text-xs text-ak-subtle text-center px-2">
+            Six poses come from Google&apos;s pretrained MediaPipe hand-tracking model; OK sign,
+            rock on, and call me from a small neural net I trained myself on ~2,500 self-collected
+            samples (99.8% held-out accuracy); and anything you teach it is matched live by
+            k-nearest-neighbors — all running client-side, in your browser.
+          </p>
         </div>
 
         {/* Control deck: songs / teach / rules */}
