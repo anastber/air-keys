@@ -261,7 +261,6 @@ const Instrument: React.FC = () => {
       </div>
 
       <footer className="text-xs text-ak-subtle text-center pt-2">
-        Built with MediaPipe, Tone.js, and Next.js ·{' '}
         <a
           href="https://github.com/anastber/air-keys"
           target="_blank"
