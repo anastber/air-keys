@@ -20,13 +20,16 @@ const TARGET_SAMPLES_PER_CLASS = 250;
 // The 4 classes ml/train.py expects (see lib/rules.ts::TRAINED_GESTURE_LABELS
 // plus the no_gesture background class) — shown here so recording sessions
 // don't drift from what the model will actually be trained on.
-const TARGET_CLASSES: { label: string; description: string }[] = [
+const TARGET_CLASSES: { label: string; description: string; hardNegatives?: string[] }[] = [
   { label: 'ok_sign', description: 'Thumb + index touching in a circle, other 3 fingers up' },
   { label: 'rock_on', description: 'Index + pinky extended, thumb/middle/ring folded' },
   { label: 'call_me', description: 'Thumb + pinky extended, other 3 fingers folded' },
   {
     label: 'no_gesture',
-    description: 'Relaxed hand, resting pose, or mid-transition — vary this one the most',
+    description:
+      'Relaxed hand, AND deliberately holding each of these — the model must see them as ' +
+      'negatives to learn to reject them, not just "not one of the 3 classes":',
+    hardNegatives: ['peace', 'pinch', 'fist', 'open_palm', 'point', 'thumbs_up'],
   },
 ];
 
@@ -93,6 +96,14 @@ const DatasetCollector: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Resume a previous export (e.g. ml/data/gestures_v1.json) so adding more
+  // samples — new classes, or more of an existing one — doesn't mean
+  // re-recording everything from scratch.
+  const loadDataset = async (file: File) => {
+    const loaded = JSON.parse(await file.text()) as DatasetRecord[];
+    setSamples((prev) => [...prev, ...loaded]);
+  };
+
   const counts: Record<string, number> = {};
   for (const s of samples) counts[s.label] = (counts[s.label] ?? 0) + 1;
 
@@ -106,11 +117,24 @@ const DatasetCollector: React.FC = () => {
           Train the 4 classes below, then save the export to{' '}
           <code>ml/data/gestures_v1.json</code>.
         </p>
+        <label className="inline-block mt-2 text-xs text-ak-cyan hover:underline cursor-pointer">
+          Load an existing dataset to add more samples on top
+          <input
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void loadDataset(file);
+              e.target.value = '';
+            }}
+          />
+        </label>
       </div>
 
       {/* Target classes — click one to fill the label input below. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {TARGET_CLASSES.map(({ label, description }) => {
+        {TARGET_CLASSES.map(({ label, description, hardNegatives }) => {
           const count = samples.filter((s) => s.label === label).length;
           const done = count >= TARGET_SAMPLES_PER_CLASS;
           return (
@@ -134,6 +158,15 @@ const DatasetCollector: React.FC = () => {
                 </span>
               </span>
               <span className="text-xs text-ak-muted">{description}</span>
+              {hardNegatives && (
+                <span className="flex items-center gap-2 text-xl leading-none pt-0.5">
+                  {hardNegatives.map((g) => (
+                    <span key={g} title={g}>
+                      {gestureEmoji(g)}
+                    </span>
+                  ))}
+                </span>
+              )}
             </button>
           );
         })}
@@ -149,7 +182,17 @@ const DatasetCollector: React.FC = () => {
         </li>
         <li>
           <code>no_gesture</code> needs the most variety: open/relaxed/curled hand, mid-transition
-          poses, different distances — this is what stops false triggers at rest.
+          poses, different distances — this is what stops false triggers at rest — plus explicitly
+          holding{' '}
+          <span className="inline-flex items-center gap-1 text-sm align-middle">
+            {['peace', 'pinch', 'fist', 'open_palm', 'point', 'thumbs_up'].map((g) => (
+              <span key={g} title={g}>
+                {gestureEmoji(g)}
+              </span>
+            ))}
+          </span>{' '}
+          <strong className="text-ak-amber">each in turn</strong>, since the trained classes will
+          otherwise confidently misfire on those (no rejection without seeing them as negatives).
         </li>
         <li>Download the dataset once every class shows ~250+ samples.</li>
       </ol>
