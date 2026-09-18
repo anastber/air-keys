@@ -8,11 +8,13 @@ import AudioVisualizer from '@/components/AudioVisualizer';
 import { isPinching } from '@/lib/notes';
 import { gestureEmoji } from '@/lib/gestureIcons';
 import { predictCustomGesture, customGestureLabels } from '@/lib/customGestures';
+import { loadTrainedGestureModel, predictTrainedGesture } from '@/lib/trainedGestures';
 import {
   BASE_GESTURE_LABELS,
   COMBOS,
   DEFAULT_CUSTOM_RULE,
   DEFAULT_RULES,
+  TRAINED_GESTURE_LABELS,
   matchCombo,
   resolveAction,
   type Combo,
@@ -43,8 +45,12 @@ const ACTION_ICON: Record<string, string> = {
 // Gesture-to-audio priority chain, per hand, per frame:
 //   1. a gesture the visitor taught themselves (client-side kNN, private to
 //      their browser) — takes priority since it's the one they chose to add
-//   2. pinch — pure thumb-index distance, no model at all, always available
-//   3. MediaPipe's pretrained canned pose — works for anyone, zero setup
+//   2. a self-trained MLP's pose (ok_sign/rock_on/call_me — see
+//      lib/trainedGestures.ts), checked before pinch specifically so a
+//      confident ok_sign (thumb+index touching) wins over the more generic
+//      pinch geometry check below, which would otherwise also fire for it
+//   3. pinch — pure thumb-index distance, no model at all, always available
+//   4. MediaPipe's pretrained canned pose — works for anyone, zero setup
 // Whichever resolves fires a rule (lib/rules.ts) once per gesture *change*,
 // not every frame it's held.
 const Instrument: React.FC = () => {
@@ -86,6 +92,15 @@ const Instrument: React.FC = () => {
     setCustomLabels(customGestureLabels());
   }, []);
 
+  // Fire-and-forget: predictTrainedGesture no-ops (returns null) until this
+  // resolves, same tolerance WebcamLandmarks has for the MediaPipe model
+  // still loading.
+  useEffect(() => {
+    loadTrainedGestureModel().catch((err) => {
+      console.error('Failed to load trained gesture model:', err);
+    });
+  }, []);
+
   const enableAudio = useCallback(async () => {
     await Tone.start();
     if (!synthRef.current) {
@@ -109,15 +124,18 @@ const Instrument: React.FC = () => {
         if (hand.landmarks.length < 21) return;
         const wrist = hand.landmarks[0];
 
-        // Priority chain: taught gesture > pinch > canned pose > nothing.
+        // Priority chain: taught gesture > trained model > pinch > canned pose > nothing.
         const custom = predictCustomGesture(hand.landmarks, hand.handedness);
+        const trained = custom ? null : predictTrainedGesture(hand.landmarks, hand.handedness);
         const thumbTip = hand.landmarks[4];
         const indexTip = hand.landmarks[8];
         const label = custom
           ? custom.label
-          : isPinching(thumbTip, indexTip)
-            ? 'pinch'
-            : (hand.gesture ?? null);
+          : trained
+            ? trained.label
+            : isPinching(thumbTip, indexTip)
+              ? 'pinch'
+              : (hand.gesture ?? null);
 
         const prevLabel = gestureStateRef.current[hand.handedness] ?? null;
         if (label !== prevLabel && label) {
@@ -177,7 +195,7 @@ const Instrument: React.FC = () => {
     setRules((prev) => (prev[label] ? prev : { ...prev, [label]: DEFAULT_CUSTOM_RULE }));
   }, []);
 
-  const allLabels = [...BASE_GESTURE_LABELS, ...customLabels];
+  const allLabels = [...BASE_GESTURE_LABELS, ...TRAINED_GESTURE_LABELS, ...customLabels];
 
   return (
     <div className="flex flex-col items-center gap-6 px-4 py-8 max-w-6xl mx-auto">
@@ -274,8 +292,9 @@ const Instrument: React.FC = () => {
           </div>
 
           <p className="text-sm text-ak-muted text-center px-2">
-            Pinch, fist, open palm, point, peace, or thumbs up all work immediately —
-            no setup. Teach it a gesture of your own in the deck to add to the set.
+            Pinch, fist, open palm, point, peace, thumbs up, OK sign, rock on, or call me
+            all work immediately — no setup. Teach it a gesture of your own in the deck to
+            add to the set.
           </p>
         </div>
 

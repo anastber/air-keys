@@ -9,6 +9,13 @@ export const GESTURE_EMOJI: Record<string, string> = {
   point: '☝️',
   peace: '✌️',
   thumbs_up: '👍',
+  ok_sign: '👌',
+  rock_on: '🤘',
+  call_me: '🤙',
+  // Background/negative class for the trained classifier (see
+  // lib/trainedGestures.ts) — never an actionable label in production, but
+  // shown in the dataset collector so it has a recognizable icon too.
+  no_gesture: '🤚',
 };
 
 // Shown for a visitor's own taught gestures, which have no fixed icon.

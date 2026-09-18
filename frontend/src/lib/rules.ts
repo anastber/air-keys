@@ -1,9 +1,10 @@
 // The control layer: maps a classified gesture to a musical action.
 //
-// This is deliberately separate from the classifier. The classifier's job
-// is perception — "which of the 6 trained poses is this hand making" — a
-// problem you genuinely can't hand-code reliably. What that pose *does*
-// musically is a plain, user-editable lookup table with no ML in it at all.
+// This is deliberately separate from the classifiers (MediaPipe's pretrained
+// model, the self-trained MLP, and the client-side kNN). Their job is
+// perception — "which gesture is this hand making" — a problem you
+// genuinely can't hand-code reliably. What that gesture *does* musically is
+// a plain, user-editable lookup table with no ML in it at all.
 // See RuleEditor for the UI that edits these live.
 
 export type ActionType = 'note' | 'chord' | 'bass' | 'arpeggio' | 'sustain_toggle';
@@ -30,6 +31,12 @@ export interface MusicalAction {
 // A visitor's taught gestures (lib/customGestures.ts) are added on top of this list.
 export const BASE_GESTURE_LABELS = ['fist', 'open_palm', 'pinch', 'point', 'peace', 'thumbs_up'];
 
+// Poses MediaPipe's pretrained recognizer doesn't cover, classified instead
+// by a small MLP trained offline on a dataset collected for this project
+// (see ml/train.py and lib/trainedGestures.ts). Also always available, zero
+// setup — the model ships with the app rather than being taught per-visitor.
+export const TRAINED_GESTURE_LABELS = ['ok_sign', 'rock_on', 'call_me'];
+
 // Fallback assigned to a newly taught custom gesture until the visitor edits it.
 export const DEFAULT_CUSTOM_RULE: GestureRule = {
   action: 'note',
@@ -43,6 +50,9 @@ export const DEFAULT_RULES: Record<string, GestureRule> = {
   point: { action: 'arpeggio', octaveRange: { min: 4, max: 5 } },
   peace: { action: 'chord', voicing: 'open', octaveRange: { min: 3, max: 4 } },
   thumbs_up: { action: 'sustain_toggle', octaveRange: { min: 3, max: 3 } },
+  ok_sign: { action: 'note', octaveRange: { min: 4, max: 6 } },
+  rock_on: { action: 'arpeggio', octaveRange: { min: 3, max: 5 } },
+  call_me: { action: 'chord', voicing: 'close', octaveRange: { min: 2, max: 3 } },
 };
 
 // --- Combos ------------------------------------------------------------

@@ -1,7 +1,10 @@
-// Provisions the MediaPipe assets that ship too large for git: the WASM
-// vision runtime (copied straight out of the installed npm package) and the
-// pretrained gesture recognizer model (downloaded once from Google's model
-// storage). Runs automatically via `npm install`'s postinstall hook.
+// Provisions the model assets that ship too large/binary for `public/` to be
+// tracked in git (the whole directory is gitignored): the MediaPipe WASM
+// vision runtime (copied from the installed npm package), the pretrained
+// gesture recognizer model (downloaded once from Google's model storage),
+// and the self-trained gesture MLP's weights (copied from ml/experiments/,
+// which IS committed — see ml/train.py). Runs automatically via `npm
+// install`'s postinstall hook.
 
 import { existsSync, mkdirSync, copyFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +17,9 @@ const wasmDestDir = path.join(root, 'public/mediapipe-wasm');
 const modelDestPath = path.join(root, 'public/models/gesture_recognizer.task');
 const modelUrl =
   'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task';
+
+const trainedWeightsSrcPath = path.join(root, '../ml/experiments/gesture_mlp_weights.json');
+const trainedWeightsDestPath = path.join(root, 'public/models/gesture_mlp_weights.json');
 
 function copyWasmRuntime() {
   if (!existsSync(wasmSrcDir)) {
@@ -48,5 +54,18 @@ async function downloadModel() {
   console.log(`[setup-mediapipe] Saved model to public/models/gesture_recognizer.task (${buffer.length} bytes)`);
 }
 
+function copyTrainedGestureWeights() {
+  if (!existsSync(trainedWeightsSrcPath)) {
+    console.warn(
+      '[setup-mediapipe] No ml/experiments/gesture_mlp_weights.json yet — run `uv run python -m ml.train` first.'
+    );
+    return;
+  }
+  mkdirSync(path.dirname(trainedWeightsDestPath), { recursive: true });
+  copyFileSync(trainedWeightsSrcPath, trainedWeightsDestPath);
+  console.log('[setup-mediapipe] Copied trained gesture MLP weights to public/models/');
+}
+
 copyWasmRuntime();
 await downloadModel();
+copyTrainedGestureWeights();
