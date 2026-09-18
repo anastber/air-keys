@@ -8,9 +8,8 @@ history for the earlier server-side classifier this replaced (and why: a
 single shared model/dataset doesn't work once more than one visitor can hit
 the app at once — see README's case study section).
 
-This backend is intentionally a stub for now, kept alive for the next
-planned layer: an LLM endpoint that reconfigures the instrument from a
-natural-language prompt (e.g. "make it sound sad and jazzy").
+This backend is intentionally a stub for now — no gesture or audio logic
+runs here. What it's used for next hasn't been decided yet.
 """
 
 import time

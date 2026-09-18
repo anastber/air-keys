@@ -33,7 +33,7 @@ The fix wasn't more infrastructure (per-session backend isolation, cleanup jobs,
 - **Personalization** moved into the browser (`localStorage` + a from-scratch kNN classifier), so each visitor's taught gestures are private to them by construction — there's no shared state to corrupt because there's no shared state.
 - As a side effect, the backend round-trip (WebSocket video streaming to a Python MediaPipe process) disappeared too, along with the latency it added — landmark extraction now happens directly against the `<video>` element.
 
-The backend is now a stub, kept for a planned LLM endpoint (see Roadmap) rather than doing any gesture work at all.
+The backend is now a stub — it doesn't do any gesture work at all. What it's used for next hasn't been decided yet.
 
 ## Self-trained gesture classifier
 
@@ -50,7 +50,7 @@ MediaPipe's pretrained recognizer and the client-side kNN cover 5+N poses withou
 | RandomForest (baseline) | 96.6% | Confusion mainly between `ok_sign` and `no_gesture` |
 | MLP, hidden layers (32, 16) — **deployed** | 99.8% | See `ml/experiments/confusion_matrix.png` |
 
-Believable, not suspicious: these are 4 visually distinct static poses from one recording session, not in-the-wild gesture recognition — a harder, noisier problem this pipeline doesn't yet attempt (see Roadmap).
+Believable, not suspicious: these are 4 visually distinct static poses from one recording session, not in-the-wild gesture recognition — a harder, noisier problem this pipeline doesn't yet attempt.
 
 **Feature engineering**: the same wrist-centered, hand-span-scaled, handedness-mirrored normalization already used by the client-side kNN (`lib/customGestures.ts::normalizeLandmarks`), ported to Python (`ml/features.py`) so train-time and inference-time preprocessing stay identical.
 
@@ -78,7 +78,7 @@ Believable, not suspicious: these are 4 visually distinct static poses from one 
 
 ### Backend
 
-- **FastAPI** - currently a stub; reserved for the LLM reconfiguration layer (see Roadmap)
+- **FastAPI** - currently a stub, not wired to any gesture or audio logic
 
 ### Offline ML (`ml/`)
 
@@ -143,12 +143,6 @@ The 8 always-available gestures are a fixed one-octave scale: fist=do, point=re,
 3. It's immediately classified from then on, with a default rule assigned automatically. Edit what it plays in the Gesture Rules panel.
 
 Taught gestures live only in your browser's `localStorage` — clearing site data removes them, and they don't transfer to another device or browser.
-
-## Roadmap
-
-- Natural-language instrument reconfiguration (e.g. "make it sound sad and jazzy") via an LLM producing structured scale/voicing/envelope config — the next planned use for the backend stub
-- A RAG-based music theory coach that grounds its explanations in what you just played
-- Optional: an opt-in, anonymized pipeline that periodically improves the base model offline from aggregated taught-gesture data across visitors — a real continuous-learning story, without reintroducing a live shared model
 
 ## Contributing
 

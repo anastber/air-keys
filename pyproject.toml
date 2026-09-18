@@ -6,8 +6,8 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     # API & Backend — hand tracking, gesture recognition, and audio all run
-    # client-side now (see frontend/src/lib). This backend is a stub kept
-    # alive for the next layer: an LLM endpoint for instrument reconfiguration.
+    # client-side now (see frontend/src/lib). This backend is currently a
+    # stub, not wired to any of that.
     "fastapi>=0.100.0",
     "uvicorn[standard]>=0.23.0",
 

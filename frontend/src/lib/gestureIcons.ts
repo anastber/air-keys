@@ -2,7 +2,7 @@
 // and canvas overlay so a visitor recognizes a pose at a glance instead of
 // reading a label.
 
-export const GESTURE_EMOJI: Record<string, string> = {
+const GESTURE_EMOJI: Record<string, string> = {
   fist: '✊',
   open_palm: '✋',
   pinch: '🤏',

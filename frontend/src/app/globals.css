@@ -18,10 +18,6 @@ body {
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-
   /* Card treatment used throughout the app: a soft-lifted panel over the
      ivory ground. A little blur so the status pills and CTA stay legible
      over whatever the live camera feed happens to show underneath them. */
