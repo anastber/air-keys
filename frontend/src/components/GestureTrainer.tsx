@@ -68,6 +68,10 @@ const GestureTrainer: React.FC<GestureTrainerProps> = ({ currentHand, onGestureR
         Name a pose, hold it in frame, and record ~20 samples. Stored only in this
         browser — nothing is sent anywhere.
       </p>
+      <p className="text-xs text-ak-subtle">
+        No training step: each recording is classified live by k-nearest-neighbors
+        against the samples you&apos;ve saved, computed entirely in your browser.
+      </p>
 
       <div className="flex gap-2">
         <input
