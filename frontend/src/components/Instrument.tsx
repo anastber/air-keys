@@ -169,7 +169,8 @@ const Instrument: React.FC = () => {
           AirKeys
         </h1>
         <p className="text-ak-muted text-sm max-w-md">
-          Wave, pinch, or fist-bump the air — your webcam turns it into music.
+          Your hands are the instrument. Your webcam watches your gestures and turns
+          them into music, live in the browser.
         </p>
       </header>
 
