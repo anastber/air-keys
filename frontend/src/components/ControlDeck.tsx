@@ -10,10 +10,10 @@ import type { HandData } from '@/lib/types';
 
 type TabId = 'songs' | 'teach' | 'rules';
 
-const TABS: { id: TabId; label: string; icon: string }[] = [
-  { id: 'songs', label: 'Songs', icon: '🎵' },
-  { id: 'teach', label: 'Teach', icon: '🧠' },
-  { id: 'rules', label: 'Rules', icon: '🎛️' },
+const TABS: { id: TabId; label: string }[] = [
+  { id: 'songs', label: 'Songs' },
+  { id: 'teach', label: 'Teach' },
+  { id: 'rules', label: 'Rules' },
 ];
 
 interface ControlDeckProps {
@@ -39,19 +39,18 @@ const ControlDeck: React.FC<ControlDeckProps> = ({
   const [active, setActive] = useState<TabId>('songs');
 
   return (
-    <div className="ak-glass rounded-2xl w-full flex flex-col overflow-hidden">
-      <div className="flex border-b border-white/[0.06]">
+    <div className="ak-glass rounded-lg w-full flex flex-col overflow-hidden">
+      <div className="flex border-b border-ak-border">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActive(tab.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors ${
+            className={`flex-1 flex items-center justify-center py-3 text-sm transition-colors border-b-2 ${
               active === tab.id
-                ? 'text-ak-text bg-white/[0.04] border-b-2 border-ak-violet'
-                : 'text-ak-subtle hover:text-ak-muted border-b-2 border-transparent'
+                ? 'text-ak-text border-ak-line font-medium'
+                : 'text-ak-subtle hover:text-ak-muted border-transparent'
             }`}
           >
-            <span>{tab.icon}</span>
             {tab.label}
           </button>
         ))}

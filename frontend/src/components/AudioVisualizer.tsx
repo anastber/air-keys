@@ -67,9 +67,8 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ analyser }) => {
         const y0 = height - barHeight;
 
         const gradient = ctx.createLinearGradient(0, height, 0, 0);
-        gradient.addColorStop(0, '#a855f7');
-        gradient.addColorStop(0.55, '#22d3ee');
-        gradient.addColorStop(1, '#f472b6');
+        gradient.addColorStop(0, '#26221c');
+        gradient.addColorStop(1, '#6b3f4f');
         ctx.fillStyle = gradient;
 
         ctx.beginPath();

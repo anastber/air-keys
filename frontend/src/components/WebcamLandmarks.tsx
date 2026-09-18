@@ -3,13 +3,12 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { GestureRecognizer } from '@mediapipe/tasks-vision';
 import { loadGestureRecognizer, recognizeFrame } from '@/lib/gestureRecognition';
-import { gestureEmoji } from '@/lib/gestureIcons';
 import type { LandmarkData } from '@/lib/types';
 
-// Right hand reads cyan, left reads pink — matches the app's accent palette
-// instead of literal traffic-light red/blue.
-const RIGHT_COLOR = '#22d3ee';
-const LEFT_COLOR = '#f472b6';
+// Right hand reads ink, left reads the accent plum — matches the app's
+// palette instead of literal traffic-light red/blue.
+const RIGHT_COLOR = '#26221c';
+const LEFT_COLOR = '#6b3f4f';
 
 export interface StageStatus {
   isWebcamActive: boolean;
@@ -167,29 +166,29 @@ const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks, onStatus
         const x = landmark.x * canvas.width;
         const y = landmark.y * canvas.height;
 
-        ctx.fillStyle = index === 0 ? color : '#ffffff';
+        ctx.fillStyle = index === 0 ? color : '#f7f4ef';
         ctx.beginPath();
         ctx.arc(x, y, index === 0 ? 7 : 3, 0, 2 * Math.PI); // wrist is larger
         ctx.fill();
       });
 
-      // Hand label: emoji + classified gesture once available, in a pill
-      // that reads clearly over busy video backgrounds.
+      // Hand label: classified gesture once available, in a pill that
+      // reads clearly over busy video backgrounds.
       if (hand.landmarks.length > 0) {
         const wrist = hand.landmarks[0];
         const labelX = wrist.x * canvas.width;
         const labelY = wrist.y * canvas.height - 24;
 
         const label = hand.gesture
-          ? `${gestureEmoji(hand.gesture)} ${hand.gesture} ${Math.round((hand.confidence ?? 0) * 100)}%`
+          ? `${hand.gesture} · ${Math.round((hand.confidence ?? 0) * 100)}%`
           : hand.handedness;
 
-        ctx.font = '600 15px var(--font-geist-sans), system-ui, sans-serif';
+        ctx.font = '600 15px var(--font-body), system-ui, sans-serif';
         const textWidth = ctx.measureText(label).width;
         const paddingX = 10;
         const pillHeight = 26;
 
-        ctx.fillStyle = 'rgba(9,7,15,0.75)';
+        ctx.fillStyle = 'rgba(23,20,15,0.82)';
         ctx.beginPath();
         ctx.roundRect(
           labelX - textWidth / 2 - paddingX,
@@ -203,7 +202,7 @@ const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks, onStatus
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        ctx.fillStyle = '#f4f4f6';
+        ctx.fillStyle = '#f7f4ef';
         ctx.textAlign = 'center';
         ctx.fillText(label, labelX, labelY - 10 + pillHeight / 2 + 5);
         ctx.textAlign = 'left';

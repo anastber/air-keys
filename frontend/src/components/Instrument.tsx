@@ -6,7 +6,6 @@ import WebcamLandmarks, { type StageStatus } from '@/components/WebcamLandmarks'
 import ControlDeck from '@/components/ControlDeck';
 import AudioVisualizer from '@/components/AudioVisualizer';
 import { isPinching } from '@/lib/notes';
-import { gestureEmoji } from '@/lib/gestureIcons';
 import { predictCustomGesture, customGestureLabels } from '@/lib/customGestures';
 import { loadTrainedGestureModel, predictTrainedGesture } from '@/lib/trainedGestures';
 import {
@@ -19,13 +18,6 @@ import {
 } from '@/lib/rules';
 import { SONGS } from '@/lib/songs';
 import type { LandmarkData } from '@/lib/types';
-
-const ACTION_ICON: Record<string, string> = {
-  note: '🎵',
-  chord: '🎹',
-  bass: '🎸',
-  arpeggio: '🎼',
-};
 
 // Layout, top to bottom: a compact header, then a wide "stage" (the camera
 // feed — the actual point of the app) paired with a tabbed "control deck"
@@ -52,7 +44,7 @@ const Instrument: React.FC = () => {
   const [currentHand, setCurrentHand] = useState<LandmarkData['hands'][number] | null>(null);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [analyser, setAnalyser] = useState<Tone.Analyser | null>(null);
-  const [lastAction, setLastAction] = useState<{ text: string; icon: string } | null>(null);
+  const [lastAction, setLastAction] = useState<string | null>(null);
   const [actionSeq, setActionSeq] = useState(0);
   const [stageStatus, setStageStatus] = useState<StageStatus>({
     isWebcamActive: false,
@@ -65,10 +57,10 @@ const Instrument: React.FC = () => {
   const gestureStateRef = useRef<Record<string, string | null>>({});
   const sustainRef = useRef(false);
 
-  // Single source of truth for "something just happened": drives both the
-  // toast text and the glow pulse around the video (keyed by actionSeq).
-  const announce = useCallback((text: string, icon: string) => {
-    setLastAction({ text, icon });
+  // Single source of truth for "something just happened": drives the toast
+  // text, keyed by actionSeq so its fade-in restarts on every trigger.
+  const announce = useCallback((text: string) => {
+    setLastAction(text);
     setActionSeq((s) => s + 1);
   }, []);
 
@@ -137,24 +129,17 @@ const Instrument: React.FC = () => {
           const rule = rules[label];
           if (rule) {
             const action = resolveAction(rule, wrist.y);
-            const emoji = gestureEmoji(label);
             if (action.type === 'sustain_toggle') {
               sustainRef.current = !sustainRef.current;
-              announce(
-                `${emoji} ${label} → sustain ${sustainRef.current ? 'on' : 'off'}`,
-                sustainRef.current ? '🔊' : '🔈'
-              );
+              announce(`${label} → sustain ${sustainRef.current ? 'on' : 'off'}`);
             } else if (action.type === 'arpeggio') {
               action.notes.forEach((note, i) => {
                 setTimeout(() => synthRef.current?.triggerAttackRelease(note, '16n'), i * 90);
               });
-              announce(`${emoji} ${label} → arpeggio: ${action.notes.join(' ')}`, '🎼');
+              announce(`${label} → arpeggio: ${action.notes.join(' ')}`);
             } else {
               synthRef.current?.triggerAttackRelease(action.notes, duration);
-              announce(
-                `${emoji} ${label} → ${action.type}: ${action.notes.join(' ')}`,
-                ACTION_ICON[action.type] ?? '🎵'
-              );
+              announce(`${label} → ${action.type}: ${action.notes.join(' ')}`);
             }
           }
         }
@@ -179,11 +164,11 @@ const Instrument: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center gap-6 px-4 py-8 max-w-6xl mx-auto">
-      <header className="flex flex-col items-center gap-1.5 text-center">
-        <span className="ak-glass rounded-full px-3 py-1 text-[11px] text-ak-muted tracking-wide uppercase">
+      <header className="flex flex-col items-center gap-2 text-center">
+        <span className="border border-ak-border rounded-full px-3 py-1 text-[11px] text-ak-muted tracking-wide uppercase">
           Client-side AI · zero setup
         </span>
-        <h1 className="text-4xl sm:text-5xl font-bold ak-gradient-text tracking-tight py-1">
+        <h1 className="font-display italic font-medium text-5xl sm:text-6xl text-ak-line tracking-tight py-1">
           AirKeys
         </h1>
         <p className="text-ak-muted text-sm max-w-md">
@@ -194,80 +179,66 @@ const Instrument: React.FC = () => {
       <div className="w-full grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 items-start">
         {/* Stage: the actual instrument */}
         <div className="flex flex-col gap-3">
-          <div className="relative">
-            {/* Glow ring that flashes around the stage on every trigger,
-                keyed by actionSeq so each new trigger restarts the
-                animation. Gated on actionSeq > 0 so it doesn't also fire
-                once on initial mount. */}
-            {actionSeq > 0 && (
-              <div
-                key={actionSeq}
-                className="pointer-events-none absolute -inset-3 rounded-[2.5rem] animate-glow-pulse z-10"
-              />
-            )}
+          <div className="bg-ak-panel border border-ak-line rounded-lg overflow-hidden">
+            <div className="relative">
+              <WebcamLandmarks onLandmarks={handleLandmarks} onStatusChange={setStageStatus} />
 
-            <div className="ak-glass rounded-3xl overflow-hidden shadow-[0_0_60px_-15px_rgba(168,85,247,0.35)]">
-              <div className="relative">
-                <WebcamLandmarks onLandmarks={handleLandmarks} onStatusChange={setStageStatus} />
-
-                {/* Error takes precedence over the "tap to start" prompt.
-                    Rendered before the status pills below so the dim/blur
-                    layer sits *under* them, not on top washing them out. */}
-                {stageStatus.error ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-ak-bg/80 backdrop-blur-sm p-6 text-center">
-                    <p className="text-ak-red text-sm max-w-xs">{stageStatus.error}</p>
-                  </div>
-                ) : (
-                  !isAudioEnabled && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-ak-bg/60 backdrop-blur-sm">
-                      <button
-                        onClick={enableAudio}
-                        className="px-6 py-3 rounded-full font-medium text-white bg-gradient-to-r from-ak-violet via-fuchsia-500 to-ak-cyan shadow-lg shadow-ak-violet/30 hover:scale-105 active:scale-100 transition-transform animate-glow-pulse"
-                      >
-                        🔈 Tap to Start Playing
-                      </button>
-                    </div>
-                  )
-                )}
-
-                {/* Status pills, overlaid top-left, above the dim layer */}
-                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 max-w-[80%]">
-                  <StatusPill
-                    ok={stageStatus.isWebcamActive}
-                    okLabel="Webcam active"
-                    badLabel="Webcam inactive"
-                  />
-                  <StatusPill
-                    ok={stageStatus.isModelReady}
-                    okLabel="Model ready"
-                    badLabel="Loading model…"
-                    pending={!stageStatus.isModelReady}
-                  />
-                  {stageStatus.isWebcamActive && (
-                    <span className="ak-glass rounded-full px-3 py-1 text-xs text-ak-muted">
-                      {stageStatus.handCount === 0
-                        ? 'No hands in frame'
-                        : `${stageStatus.handCount} hand${stageStatus.handCount > 1 ? 's' : ''}`}
-                    </span>
-                  )}
+              {/* Error takes precedence over the "tap to start" prompt.
+                  Rendered before the status pills below so the dim/blur
+                  layer sits *under* them, not on top washing them out. */}
+              {stageStatus.error ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-ak-bg/85 backdrop-blur-sm p-6 text-center">
+                  <p className="text-ak-red text-sm max-w-xs">{stageStatus.error}</p>
                 </div>
-
-                {/* Last action, overlaid bottom-center so it never shifts layout */}
-                {lastAction && (
-                  <div
-                    key={actionSeq}
-                    className="absolute bottom-3 left-1/2 -translate-x-1/2 ak-glass flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-mono text-ak-text animate-fade-in-up max-w-[90%]"
-                  >
-                    <span className="text-base shrink-0">{lastAction.icon}</span>
-                    <span className="truncate">{lastAction.text}</span>
+              ) : (
+                !isAudioEnabled && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-ak-bg/70 backdrop-blur-sm">
+                    <button
+                      onClick={enableAudio}
+                      className="px-7 py-3.5 rounded-md border border-ak-line text-ak-line font-display italic text-lg hover:bg-ak-line hover:text-ak-bg transition-colors"
+                    >
+                      Tap to start playing
+                    </button>
                   </div>
+                )
+              )}
+
+              {/* Status pills, overlaid top-left, above the dim layer */}
+              <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 max-w-[80%]">
+                <StatusPill
+                  ok={stageStatus.isWebcamActive}
+                  okLabel="Webcam active"
+                  badLabel="Webcam inactive"
+                />
+                <StatusPill
+                  ok={stageStatus.isModelReady}
+                  okLabel="Model ready"
+                  badLabel="Loading model…"
+                  pending={!stageStatus.isModelReady}
+                />
+                {stageStatus.isWebcamActive && (
+                  <span className="ak-glass rounded-full px-3 py-1 text-xs text-ak-muted">
+                    {stageStatus.handCount === 0
+                      ? 'No hands in frame'
+                      : `${stageStatus.handCount} hand${stageStatus.handCount > 1 ? 's' : ''}`}
+                  </span>
                 )}
               </div>
 
-              {/* Visualizer strip, flush against the video, same card */}
-              <div className="border-t border-white/[0.06] px-3 py-2">
-                <AudioVisualizer analyser={analyser} />
-              </div>
+              {/* Last action, overlaid bottom-center so it never shifts layout */}
+              {lastAction && (
+                <div
+                  key={actionSeq}
+                  className="absolute bottom-3 left-1/2 -translate-x-1/2 ak-glass rounded-full px-4 py-1.5 text-sm text-ak-line animate-fade-in-up max-w-[90%]"
+                >
+                  <span className="truncate">{lastAction}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Visualizer strip, flush against the video, same card */}
+            <div className="border-t border-ak-border px-3 py-2">
+              <AudioVisualizer analyser={analyser} />
             </div>
           </div>
 
@@ -295,7 +266,7 @@ const Instrument: React.FC = () => {
           href="https://github.com/anastber/air-keys"
           target="_blank"
           rel="noopener noreferrer"
-          className="underline hover:text-ak-muted"
+          className="underline hover:text-ak-accent"
         >
           View source
         </a>

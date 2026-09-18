@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { SOLFEGE_SYLLABLES, type ActionType, type GestureRule, type Voicing } from '@/lib/rules';
-import { gestureEmoji } from '@/lib/gestureIcons';
+import GestureIcon from '@/components/GestureIcon';
 
 interface RuleEditorProps {
   labels: string[];
@@ -14,9 +14,9 @@ const ACTIONS: ActionType[] = ['note', 'chord', 'bass', 'arpeggio', 'sustain_tog
 const VOICINGS: Voicing[] = ['close', 'open'];
 
 const selectClass =
-  'bg-white/[0.06] border border-white/10 rounded-lg px-2 py-1 text-ak-text text-xs focus:outline-none focus:ring-1 focus:ring-ak-violet/60 focus:border-ak-violet/60';
+  'bg-transparent border border-ak-border rounded-md px-2 py-1 text-ak-text text-xs focus:outline-none focus:ring-1 focus:ring-ak-accent/60 focus:border-ak-accent/60';
 const numberClass =
-  'bg-white/[0.06] border border-white/10 rounded-lg w-12 px-1.5 py-1 text-ak-text text-xs text-center focus:outline-none focus:ring-1 focus:ring-ak-violet/60 focus:border-ak-violet/60';
+  'bg-transparent border border-ak-border rounded-md w-12 px-1.5 py-1 text-ak-text text-xs text-center focus:outline-none focus:ring-1 focus:ring-ak-accent/60 focus:border-ak-accent/60';
 
 const RuleEditor: React.FC<RuleEditorProps> = ({ labels, rules, onChange }) => (
   <div className="flex flex-col gap-3">
@@ -31,14 +31,14 @@ const RuleEditor: React.FC<RuleEditorProps> = ({ labels, rules, onChange }) => (
         return (
           <div
             key={label}
-            className="flex flex-wrap items-center gap-2 rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-2.5"
+            className="flex flex-wrap items-center gap-2 rounded-lg bg-ak-panel/60 border border-ak-border px-3 py-2.5"
           >
-            <span className="flex items-center gap-1.5 w-28 shrink-0">
-              <span className="text-base leading-none">{gestureEmoji(label)}</span>
+            <span className="flex items-center gap-2 w-28 shrink-0">
+              <GestureIcon label={label} size={28} className="text-ak-line shrink-0" />
               <span className="flex flex-col leading-tight min-w-0">
-                <span className="font-mono text-xs text-ak-muted truncate">{label}</span>
+                <span className="text-xs text-ak-muted truncate">{label}</span>
                 {rule.degree !== undefined && (
-                  <span className="text-[10px] text-ak-violet/80">
+                  <span className="text-[10px] text-ak-accent">
                     {SOLFEGE_SYLLABLES[rule.degree]}
                   </span>
                 )}

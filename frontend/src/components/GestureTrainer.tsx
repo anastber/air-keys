@@ -6,7 +6,7 @@ import {
   customGestureCounts,
   recordCustomGesture,
 } from '@/lib/customGestures';
-import { gestureEmoji } from '@/lib/gestureIcons';
+import GestureIcon from '@/components/GestureIcon';
 import type { HandData } from '@/lib/types';
 
 interface GestureTrainerProps {
@@ -76,12 +76,12 @@ const GestureTrainer: React.FC<GestureTrainerProps> = ({ currentHand, onGestureR
           onChange={(e) => setLabelInput(e.target.value)}
           placeholder="e.g. rock_on"
           disabled={recordingLabel !== null}
-          className="flex-1 bg-white/[0.06] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-ak-text placeholder:text-ak-subtle focus:outline-none focus:ring-1 focus:ring-ak-violet/60 focus:border-ak-violet/60 disabled:opacity-50"
+          className="flex-1 bg-transparent border border-ak-border rounded-md px-3 py-1.5 text-sm text-ak-text placeholder:text-ak-subtle focus:outline-none focus:ring-1 focus:ring-ak-accent/60 focus:border-ak-accent/60 disabled:opacity-50"
         />
         <button
           onClick={startRecording}
           disabled={!currentHand || !labelInput.trim() || recordingLabel !== null}
-          className="px-4 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-ak-violet to-ak-cyan text-white shadow-lg shadow-ak-violet/20 hover:opacity-90 transition-opacity disabled:opacity-40 disabled:shadow-none"
+          className="px-4 py-1.5 rounded-md text-sm font-medium bg-ak-line text-ak-bg hover:bg-ak-accent transition-colors disabled:opacity-40"
         >
           Record
         </button>
@@ -90,7 +90,7 @@ const GestureTrainer: React.FC<GestureTrainerProps> = ({ currentHand, onGestureR
       {recordingLabel && (
         <div className="flex items-center gap-3">
           <RecordingRing progress={progress} />
-          <p className="text-sm font-mono text-ak-cyan">
+          <p className="text-sm text-ak-accent">
             &ldquo;{recordingLabel}&rdquo; — {recordedCount}/{SAMPLES_PER_RECORDING}
           </p>
         </div>
@@ -100,12 +100,12 @@ const GestureTrainer: React.FC<GestureTrainerProps> = ({ currentHand, onGestureR
       )}
 
       {Object.keys(counts).length > 0 && (
-        <div className="flex flex-col gap-1.5 pt-1 border-t border-white/[0.06]">
+        <div className="flex flex-col gap-1.5 pt-1 border-t border-ak-border">
           {Object.entries(counts).map(([label, count]) => (
             <div key={label} className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-1.5">
-                <span className="text-base leading-none">{gestureEmoji(label)}</span>
-                <span className="font-mono text-ak-text">
+              <span className="flex items-center gap-2">
+                <GestureIcon label={label} size={20} className="text-ak-line" />
+                <span className="text-ak-text">
                   {label} <span className="text-ak-subtle">({count})</span>
                 </span>
               </span>
@@ -129,7 +129,7 @@ const RecordingRing: React.FC<{ progress: number }> = ({ progress }) => {
     <div
       className="relative w-9 h-9 rounded-full shrink-0"
       style={{
-        background: `conic-gradient(#22d3ee ${pct}%, rgba(255,255,255,0.1) ${pct}% 100%)`,
+        background: `conic-gradient(#6b3f4f ${pct}%, rgba(38,34,28,0.12) ${pct}% 100%)`,
       }}
     >
       <div className="absolute inset-[3px] rounded-full bg-ak-bg" />

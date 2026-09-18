@@ -2,69 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* AirKeys is a performance instrument, not a dashboard — it commits to one
-   dark, stage-lit look rather than adapting to system light/dark, the way
-   most DAW/VJ tools do. Deliberate choice, not an oversight. */
+/* AirKeys commits to one light, editorial look — warm ivory, ink text, a
+   single restrained accent — rather than adapting to system light/dark. */
 :root {
-  --background: #09070f;
-  --foreground: #f4f4f6;
-  color-scheme: dark;
+  --background: #f7f4ef;
+  --foreground: #17140f;
+  color-scheme: light;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
   overflow-x: hidden;
-}
-
-/* Soft drifting color blobs behind everything, fixed so panels scroll over
-   them. Pure CSS — no JS cost for an ambient effect nobody needs animated
-   at 60fps. */
-.ak-atmosphere {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.ak-atmosphere::before,
-.ak-atmosphere::after {
-  content: "";
-  position: absolute;
-  width: 60vmax;
-  height: 60vmax;
-  border-radius: 9999px;
-  filter: blur(90px);
-  opacity: 0.22;
-}
-
-.ak-atmosphere::before {
-  top: -18vmax;
-  left: -12vmax;
-  background: radial-gradient(circle, #a855f7 0%, transparent 70%);
-  animation: blob 14s ease-in-out infinite;
-}
-
-.ak-atmosphere::after {
-  bottom: -20vmax;
-  right: -14vmax;
-  background: radial-gradient(circle, #22d3ee 0%, transparent 70%);
-  animation: blob 18s ease-in-out infinite reverse;
-}
-
-@keyframes blob {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  33% {
-    transform: translate(4%, -6%) scale(1.08);
-  }
-  66% {
-    transform: translate(-3%, 4%) scale(0.95);
-  }
 }
 
 @layer utilities {
@@ -72,23 +22,18 @@ body {
     text-wrap: balance;
   }
 
-  /* Frosted panel used by every card in the app. */
+  /* Card treatment used throughout the app: a soft-lifted panel over the
+     ivory ground. A little blur so the status pills and CTA stay legible
+     over whatever the live camera feed happens to show underneath them. */
   .ak-glass {
-    background: rgba(255, 255, 255, 0.045);
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
-
-  .ak-gradient-text {
-    background-image: linear-gradient(90deg, #a855f7, #22d3ee 55%, #f472b6);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(38, 34, 28, 0.12);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 }
 
-/* Slim, dark-matched scrollbar (Chromium/WebKit) */
+/* Slim scrollbar matched to the ivory ground (Chromium/WebKit) */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -97,9 +42,9 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(38, 34, 28, 0.15);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(38, 34, 28, 0.25);
 }

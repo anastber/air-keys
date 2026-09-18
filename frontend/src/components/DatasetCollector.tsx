@@ -11,7 +11,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import WebcamLandmarks from '@/components/WebcamLandmarks';
-import { gestureEmoji } from '@/lib/gestureIcons';
+import GestureIcon from '@/components/GestureIcon';
 import type { HandData, Landmark, LandmarkData } from '@/lib/types';
 
 const SAMPLES_PER_RECORDING = 20;
@@ -117,7 +117,7 @@ const DatasetCollector: React.FC = () => {
           Train the 4 classes below, then save the export to{' '}
           <code>ml/data/gestures_v1.json</code>.
         </p>
-        <label className="inline-block mt-2 text-xs text-ak-cyan hover:underline cursor-pointer">
+        <label className="inline-block mt-2 text-xs text-ak-accent hover:underline cursor-pointer">
           Load an existing dataset to add more samples on top
           <input
             type="file"
@@ -142,28 +142,26 @@ const DatasetCollector: React.FC = () => {
               key={label}
               onClick={() => setLabelInput(label)}
               disabled={recordingLabel !== null}
-              className={`text-left flex flex-col gap-1 rounded-xl border px-3 py-2.5 transition-colors disabled:opacity-50 ${
+              className={`text-left flex flex-col gap-1 rounded-lg border px-3 py-2.5 transition-colors disabled:opacity-50 ${
                 labelInput === label
-                  ? 'border-ak-violet/60 bg-ak-violet/10'
-                  : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]'
+                  ? 'border-ak-accent/60 bg-ak-accent/10'
+                  : 'border-ak-border bg-ak-panel/40 hover:bg-ak-panel'
               }`}
             >
               <span className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 font-mono text-sm">
-                  <span className="text-lg leading-none">{gestureEmoji(label)}</span>
+                <span className="flex items-center gap-1.5 text-sm">
+                  <GestureIcon label={label} size={20} className="text-ak-line" />
                   {label}
                 </span>
-                <span className={`text-xs font-mono ${done ? 'text-ak-emerald' : 'text-ak-subtle'}`}>
+                <span className={`text-xs ${done ? 'text-ak-emerald' : 'text-ak-subtle'}`}>
                   {count}/{TARGET_SAMPLES_PER_CLASS}
                 </span>
               </span>
               <span className="text-xs text-ak-muted">{description}</span>
               {hardNegatives && (
-                <span className="flex items-center gap-2 text-xl leading-none pt-0.5">
+                <span className="flex items-center gap-2 pt-0.5">
                   {hardNegatives.map((g) => (
-                    <span key={g} title={g}>
-                      {gestureEmoji(g)}
-                    </span>
+                    <GestureIcon key={g} label={g} size={20} className="text-ak-line" />
                   ))}
                 </span>
               )}
@@ -173,7 +171,7 @@ const DatasetCollector: React.FC = () => {
       </div>
 
       {/* How-to, kept short — the counters above are the real feedback loop. */}
-      <ol className="text-xs text-ak-muted list-decimal list-inside flex flex-col gap-1 bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3">
+      <ol className="text-xs text-ak-muted list-decimal list-inside flex flex-col gap-1 bg-ak-panel/40 border border-ak-border rounded-lg px-4 py-3">
         <li>Click a class above to fill its label, then hit Record and hold the pose.</li>
         <li>Each Record captures ~1s (20 frames) — repeat 10-15x per class, not once.</li>
         <li>
@@ -184,11 +182,9 @@ const DatasetCollector: React.FC = () => {
           <code>no_gesture</code> needs the most variety: open/relaxed/curled hand, mid-transition
           poses, different distances — this is what stops false triggers at rest — plus explicitly
           holding{' '}
-          <span className="inline-flex items-center gap-1 text-sm align-middle">
+          <span className="inline-flex items-center gap-1 align-middle">
             {['peace', 'pinch', 'fist', 'open_palm', 'point', 'thumbs_up'].map((g) => (
-              <span key={g} title={g}>
-                {gestureEmoji(g)}
-              </span>
+              <GestureIcon key={g} label={g} size={18} className="text-ak-line" />
             ))}
           </span>{' '}
           <strong className="text-ak-amber">each in turn</strong>, since the trained classes will
@@ -197,7 +193,7 @@ const DatasetCollector: React.FC = () => {
         <li>Download the dataset once every class shows ~250+ samples.</li>
       </ol>
 
-      <div className="rounded-xl overflow-hidden border border-white/10">
+      <div className="rounded-lg overflow-hidden border border-ak-border">
         <WebcamLandmarks onLandmarks={handleLandmarks} />
       </div>
 
@@ -208,31 +204,31 @@ const DatasetCollector: React.FC = () => {
           onChange={(e) => setLabelInput(e.target.value)}
           placeholder="e.g. ok_sign"
           disabled={recordingLabel !== null}
-          className="flex-1 bg-white/[0.06] border border-white/10 rounded-lg px-3 py-1.5 text-sm placeholder:text-ak-subtle focus:outline-none focus:ring-1 focus:ring-ak-violet/60 disabled:opacity-50"
+          className="flex-1 bg-transparent border border-ak-border rounded-md px-3 py-1.5 text-sm placeholder:text-ak-subtle focus:outline-none focus:ring-1 focus:ring-ak-accent/60 disabled:opacity-50"
         />
         <button
           onClick={startRecording}
           disabled={!currentHand || !labelInput.trim() || recordingLabel !== null}
-          className="px-4 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-ak-violet to-ak-cyan text-white disabled:opacity-40"
+          className="px-4 py-1.5 rounded-md text-sm font-medium bg-ak-line text-ak-bg disabled:opacity-40"
         >
           Record
         </button>
       </div>
 
       {recordingLabel && (
-        <p className="text-sm font-mono text-ak-cyan">
+        <p className="text-sm text-ak-accent">
           &ldquo;{recordingLabel}&rdquo; — {recordedCount}/{SAMPLES_PER_RECORDING} ({Math.round(progress * 100)}%)
         </p>
       )}
       {!currentHand && <p className="text-xs text-ak-amber">Show a hand to the camera to record.</p>}
 
       {Object.keys(counts).length > 0 && (
-        <div className="flex flex-col gap-1.5 pt-2 border-t border-white/[0.06]">
+        <div className="flex flex-col gap-1.5 pt-2 border-t border-ak-border">
           {Object.entries(counts).map(([label, count]) => (
             <div key={label} className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-1.5">
-                <span>{gestureEmoji(label)}</span>
-                <span className="font-mono">
+                <GestureIcon label={label} size={18} className="text-ak-line" />
+                <span>
                   {label} <span className="text-ak-subtle">({count})</span>
                 </span>
               </span>
@@ -246,7 +242,7 @@ const DatasetCollector: React.FC = () => {
           ))}
           <button
             onClick={downloadDataset}
-            className="mt-2 self-start px-4 py-1.5 rounded-lg text-sm font-medium bg-white/10 hover:bg-white/20"
+            className="mt-2 self-start px-4 py-1.5 rounded-md text-sm font-medium bg-ak-panel hover:bg-ak-panel-hover border border-ak-border"
           >
             Download dataset ({samples.length} samples)
           </button>
