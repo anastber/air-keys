@@ -293,6 +293,12 @@ Desktop.ini
 *.sqlite
 *.sqlite3
 
-# ===== Gesture classifier data/model (generated live, not committed) =====
+# ===== Gesture classifier data/model =====
+# Raw training data and the full sklearn pickle aren't committed (privacy +
+# size); the exported MLP weights JSON and confusion matrix ARE committed —
+# see ml/train.py — as the evidence + deployable artifact for the
+# self-trained classifier (frontend/scripts/setup-mediapipe.mjs copies the
+# weights into the gitignored public/ dir on install).
 ml/data/*.jsonl
+ml/data/*.json
 ml/experiments/*.joblib

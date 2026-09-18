@@ -11,6 +11,15 @@ dependencies = [
     "fastapi>=0.100.0",
     "uvicorn[standard]>=0.23.0",
 
+    # Offline training for the self-trained gesture classifier (see ml/).
+    # Training data is collected client-side (same MediaPipe pipeline as
+    # inference); these deps only run the offline train/eval pipeline, so
+    # no mediapipe/opencv webcam-capture deps are needed here.
+    "numpy>=1.24.0",
+    "scikit-learn>=1.3.0",
+    "joblib>=1.3.0",
+    "matplotlib>=3.7.0",
+
     # Development
     "ruff>=0.0.280",
 ]

@@ -31,15 +31,15 @@ dev: ## Start development servers (backend + frontend)
 
 lint: ## Run linting and formatting (Python + Node.js)
 	@echo "Linting Python code with ruff..."
-	. .venv/bin/activate && ruff check $(PYTHON_SRC)/
-	. .venv/bin/activate && ruff format --check $(PYTHON_SRC)/
+	. .venv/bin/activate && ruff check $(PYTHON_SRC)/ ml/
+	. .venv/bin/activate && ruff format --check $(PYTHON_SRC)/ ml/
 	@echo "Linting Node.js code with ESLint..."
 	cd $(FRONTEND_SRC) && $(NPM) run lint
 	@echo "✅ All linting passed!"
 
 format: ## Format all code (Python + Node.js)
 	@echo "Formatting Python code with ruff..."
-	. .venv/bin/activate && ruff format $(PYTHON_SRC)/
+	. .venv/bin/activate && ruff format $(PYTHON_SRC)/ ml/
 	@echo "Formatting complete!"
 
 clean: ## Clean build artifacts and caches
