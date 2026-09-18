@@ -11,22 +11,14 @@ import { predictCustomGesture, customGestureLabels } from '@/lib/customGestures'
 import { loadTrainedGestureModel, predictTrainedGesture } from '@/lib/trainedGestures';
 import {
   BASE_GESTURE_LABELS,
-  COMBOS,
   DEFAULT_CUSTOM_RULE,
   DEFAULT_RULES,
   TRAINED_GESTURE_LABELS,
-  matchCombo,
   resolveAction,
-  type Combo,
   type GestureRule,
 } from '@/lib/rules';
 import { SONGS } from '@/lib/songs';
 import type { LandmarkData } from '@/lib/types';
-
-// How long a partial combo stays "live" before it's forgotten — long enough
-// to perform 3 deliberate gestures, short enough that idle play doesn't
-// coincidentally complete one.
-const COMBO_WINDOW_MS = 6000;
 
 const ACTION_ICON: Record<string, string> = {
   note: '🎵',
@@ -37,11 +29,11 @@ const ACTION_ICON: Record<string, string> = {
 
 // Layout, top to bottom: a compact header, then a wide "stage" (the camera
 // feed — the actual point of the app) paired with a tabbed "control deck"
-// for the three secondary panels (combos / teach / rules), side by side on
+// for the secondary panels (songs / teach / rules), side by side on
 // desktop and stacked stage-first on mobile. Rationale for putting the
-// three panels behind tabs rather than as three stacked cards: they serve
-// different moments (reference vs. input vs. configuration) and don't need
-// to all be visible while someone is just trying to play.
+// panels behind tabs rather than as stacked cards: they serve different
+// moments (reference vs. input vs. configuration) and don't need to all
+// be visible while someone is just trying to play.
 //
 // Gesture-to-audio priority chain, per hand, per frame:
 //   1. a gesture the visitor taught themselves (client-side kNN, private to
@@ -72,21 +64,12 @@ const Instrument: React.FC = () => {
   const synthRef = useRef<Tone.PolySynth | null>(null);
   const gestureStateRef = useRef<Record<string, string | null>>({});
   const sustainRef = useRef(false);
-  const recentGesturesRef = useRef<{ label: string; time: number }[]>([]);
 
   // Single source of truth for "something just happened": drives both the
   // toast text and the glow pulse around the video (keyed by actionSeq).
   const announce = useCallback((text: string, icon: string) => {
     setLastAction({ text, icon });
     setActionSeq((s) => s + 1);
-  }, []);
-
-  const playCombo = useCallback((combo: Combo) => {
-    let delay = 200; // let the triggering gesture's own note ring briefly first
-    combo.melody.forEach((step) => {
-      setTimeout(() => synthRef.current?.triggerAttackRelease(step.notes, step.duration), delay);
-      delay += combo.stepDelayMs;
-    });
   }, []);
 
   useEffect(() => {
@@ -174,26 +157,11 @@ const Instrument: React.FC = () => {
               );
             }
           }
-
-          // Combo tracking: a single timeline shared across both hands — do
-          // 3 specific gestures in order, from either hand, within the
-          // window, and a bonus tune plays on top of the action above.
-          const now = Date.now();
-          const recent = [...recentGesturesRef.current, { label, time: now }].filter(
-            (e) => now - e.time < COMBO_WINDOW_MS
-          );
-          recentGesturesRef.current = recent.slice(-6);
-          const combo = matchCombo(recent.map((e) => e.label));
-          if (combo) {
-            recentGesturesRef.current = [];
-            playCombo(combo);
-            announce(`${combo.name}: ${combo.sequence.map(gestureEmoji).join(' ')}`, '🎶');
-          }
         }
         gestureStateRef.current[hand.handedness] = label;
       });
     },
-    [isAudioEnabled, rules, playCombo, announce]
+    [isAudioEnabled, rules, announce]
   );
 
   const updateRule = useCallback((label: string, patch: Partial<GestureRule>) => {
@@ -310,10 +278,9 @@ const Instrument: React.FC = () => {
           </p>
         </div>
 
-        {/* Control deck: songs / combos / teach / rules */}
+        {/* Control deck: songs / teach / rules */}
         <ControlDeck
           songs={SONGS}
-          combos={COMBOS}
           currentHand={currentHand}
           onGestureRecorded={handleGestureRecorded}
           labels={allLabels}

@@ -1,4 +1,4 @@
-// Emoji stand-ins for each gesture — used in the combo guide, rule editor,
+// Emoji stand-ins for each gesture — used in the song guide, rule editor,
 // and canvas overlay so a visitor recognizes a pose at a glance instead of
 // reading a label.
 
