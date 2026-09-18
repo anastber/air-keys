@@ -6,7 +6,7 @@ import {
   customGestureCounts,
   recordCustomGesture,
 } from '@/lib/customGestures';
-import GestureIcon from '@/components/GestureIcon';
+import { gestureEmoji } from '@/lib/gestureIcons';
 import type { HandData } from '@/lib/types';
 
 interface GestureTrainerProps {
@@ -103,8 +103,8 @@ const GestureTrainer: React.FC<GestureTrainerProps> = ({ currentHand, onGestureR
         <div className="flex flex-col gap-1.5 pt-1 border-t border-ak-border">
           {Object.entries(counts).map(([label, count]) => (
             <div key={label} className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2">
-                <GestureIcon label={label} size={20} className="text-ak-line" />
+              <span className="flex items-center gap-1.5">
+                <span className="text-base leading-none">{gestureEmoji(label)}</span>
                 <span className="text-ak-text">
                   {label} <span className="text-ak-subtle">({count})</span>
                 </span>

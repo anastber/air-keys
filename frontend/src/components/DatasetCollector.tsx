@@ -11,7 +11,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import WebcamLandmarks from '@/components/WebcamLandmarks';
-import GestureIcon from '@/components/GestureIcon';
+import { gestureEmoji } from '@/lib/gestureIcons';
 import type { HandData, Landmark, LandmarkData } from '@/lib/types';
 
 const SAMPLES_PER_RECORDING = 20;
@@ -150,7 +150,7 @@ const DatasetCollector: React.FC = () => {
             >
               <span className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-sm">
-                  <GestureIcon label={label} size={20} className="text-ak-line" />
+                  <span className="text-lg leading-none">{gestureEmoji(label)}</span>
                   {label}
                 </span>
                 <span className={`text-xs ${done ? 'text-ak-emerald' : 'text-ak-subtle'}`}>
@@ -159,9 +159,11 @@ const DatasetCollector: React.FC = () => {
               </span>
               <span className="text-xs text-ak-muted">{description}</span>
               {hardNegatives && (
-                <span className="flex items-center gap-2 pt-0.5">
+                <span className="flex items-center gap-2 text-xl leading-none pt-0.5">
                   {hardNegatives.map((g) => (
-                    <GestureIcon key={g} label={g} size={20} className="text-ak-line" />
+                    <span key={g} title={g}>
+                      {gestureEmoji(g)}
+                    </span>
                   ))}
                 </span>
               )}
@@ -182,9 +184,11 @@ const DatasetCollector: React.FC = () => {
           <code>no_gesture</code> needs the most variety: open/relaxed/curled hand, mid-transition
           poses, different distances — this is what stops false triggers at rest — plus explicitly
           holding{' '}
-          <span className="inline-flex items-center gap-1 align-middle">
+          <span className="inline-flex items-center gap-1 text-sm align-middle">
             {['peace', 'pinch', 'fist', 'open_palm', 'point', 'thumbs_up'].map((g) => (
-              <GestureIcon key={g} label={g} size={18} className="text-ak-line" />
+              <span key={g} title={g}>
+                {gestureEmoji(g)}
+              </span>
             ))}
           </span>{' '}
           <strong className="text-ak-amber">each in turn</strong>, since the trained classes will
@@ -227,7 +231,7 @@ const DatasetCollector: React.FC = () => {
           {Object.entries(counts).map(([label, count]) => (
             <div key={label} className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-1.5">
-                <GestureIcon label={label} size={18} className="text-ak-line" />
+                <span>{gestureEmoji(label)}</span>
                 <span>
                   {label} <span className="text-ak-subtle">({count})</span>
                 </span>

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { Song } from '@/lib/songs';
-import GestureIcon from '@/components/GestureIcon';
+import { gestureEmoji } from '@/lib/gestureIcons';
 
 interface SongGuideProps {
   songs: Song[];
@@ -26,8 +26,8 @@ const SongGuide: React.FC<SongGuideProps> = ({ songs }) => (
               <div key={i} className="flex items-center gap-2 flex-wrap">
                 {phrase.map((gesture, j) => (
                   <React.Fragment key={j}>
-                    <span title={gesture}>
-                      <GestureIcon label={gesture} size={30} className="text-ak-line" />
+                    <span title={gesture} className="text-2xl leading-none">
+                      {gestureEmoji(gesture)}
                     </span>
                     {j < phrase.length - 1 && <span className="text-ak-subtle text-xs">→</span>}
                   </React.Fragment>

@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { GestureRecognizer } from '@mediapipe/tasks-vision';
 import { loadGestureRecognizer, recognizeFrame } from '@/lib/gestureRecognition';
+import { gestureEmoji } from '@/lib/gestureIcons';
 import type { LandmarkData } from '@/lib/types';
 
 // Right hand reads ink, left reads the accent plum — matches the app's
@@ -180,7 +181,7 @@ const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks, onStatus
         const labelY = wrist.y * canvas.height - 24;
 
         const label = hand.gesture
-          ? `${hand.gesture} · ${Math.round((hand.confidence ?? 0) * 100)}%`
+          ? `${gestureEmoji(hand.gesture)} ${hand.gesture} ${Math.round((hand.confidence ?? 0) * 100)}%`
           : hand.handedness;
 
         ctx.font = '600 15px var(--font-body), system-ui, sans-serif';

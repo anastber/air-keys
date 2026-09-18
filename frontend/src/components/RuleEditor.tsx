@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { SOLFEGE_SYLLABLES, type ActionType, type GestureRule, type Voicing } from '@/lib/rules';
-import GestureIcon from '@/components/GestureIcon';
+import { gestureEmoji } from '@/lib/gestureIcons';
 
 interface RuleEditorProps {
   labels: string[];
@@ -34,7 +34,7 @@ const RuleEditor: React.FC<RuleEditorProps> = ({ labels, rules, onChange }) => (
             className="flex flex-wrap items-center gap-2 rounded-lg bg-ak-panel/60 border border-ak-border px-3 py-2.5"
           >
             <span className="flex items-center gap-2 w-28 shrink-0">
-              <GestureIcon label={label} size={28} className="text-ak-line shrink-0" />
+              <span className="text-lg leading-none shrink-0">{gestureEmoji(label)}</span>
               <span className="flex flex-col leading-tight min-w-0">
                 <span className="text-xs text-ak-muted truncate">{label}</span>
                 {rule.degree !== undefined && (
