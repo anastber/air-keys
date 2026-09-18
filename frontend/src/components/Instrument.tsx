@@ -165,9 +165,6 @@ const Instrument: React.FC = () => {
   return (
     <div className="flex flex-col items-center gap-6 px-4 py-8 max-w-6xl mx-auto">
       <header className="flex flex-col items-center gap-2 text-center">
-        <span className="border border-ak-border rounded-full px-3 py-1 text-[11px] text-ak-muted tracking-wide uppercase">
-          Client-side AI · zero setup
-        </span>
         <h1 className="font-display italic font-medium text-5xl sm:text-6xl text-ak-line tracking-tight py-1">
           AirKeys
         </h1>
