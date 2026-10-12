@@ -271,15 +271,21 @@ def _validate_own(records: list[dict[str, Any]], report: Report) -> None:
     }
 
 
-def hagrid_demographics(
+def _age_bucket(age: float | None) -> str:
+    if age is None:
+        return "unknown"
+    low = min(int(age // 10) * 10, 60)
+    return "60+" if low == 60 else f"{low}-{low + 9}"
+
+
+def hagrid_attributes(
     records: list[dict[str, Any]], annotations_dir: Path = CACHE_DIR / "annotations"
-) -> dict[str, dict[str, int]] | None:
-    """Gender / race / age distribution of the sampled HaGRID subjects.
+) -> dict[str, dict[str, str]] | None:
+    """Gender, race and age bucket of each record's subject, keyed by image_id.
 
     Uses HaGRID's own meta annotations (automatically estimated with FairFace
     and MiVOLO, so approximate), read from the annotation cache written by
-    ml/datasets/hagrid.py. Counted once per subject. Returns None if the
-    cache isn't available.
+    ml/datasets/hagrid.py. Returns None if the cache isn't available.
     """
     needed = {(r["split"], r["hagrid_label"]) for r in records}
     meta_by_image: dict[str, dict[str, Any]] = {}
@@ -290,27 +296,35 @@ def hagrid_demographics(
         for image_id, annotation in json.loads(path.read_text()).items():
             meta_by_image[image_id] = annotation.get("meta") or {}
 
-    meta_by_user: dict[str, dict[str, Any]] = {}
-    for r in records:
-        meta_by_user.setdefault(r["user_id"], meta_by_image.get(r["image_id"], {}))
-
     def first(meta: dict[str, Any], key: str) -> Any:
         values = meta.get(key) or [None]
         return values[0]
 
-    def age_bucket(age: float | None) -> str:
-        if age is None:
-            return "unknown"
-        low = min(int(age // 10) * 10, 60)
-        return "60+" if low == 60 else f"{low}-{low + 9}"
+    attributes = {}
+    for r in records:
+        meta = meta_by_image.get(r["image_id"], {})
+        attributes[r["image_id"]] = {
+            "gender": first(meta, "gender") or "unknown",
+            "race": first(meta, "race") or "unknown",
+            "age": _age_bucket(first(meta, "age")),
+        }
+    return attributes
 
-    users = list(meta_by_user.values())
+
+def hagrid_demographics(
+    records: list[dict[str, Any]], annotations_dir: Path = CACHE_DIR / "annotations"
+) -> dict[str, dict[str, int]] | None:
+    """Gender / race / age distribution of the sampled HaGRID subjects, once per subject."""
+    attributes = hagrid_attributes(records, annotations_dir)
+    if attributes is None:
+        return None
+    by_user: dict[str, dict[str, str]] = {}
+    for r in records:
+        by_user.setdefault(r["user_id"], attributes[r["image_id"]])
+    users = list(by_user.values())
     return {
-        "gender": dict(Counter(first(m, "gender") or "unknown" for m in users)),
-        "race": dict(Counter(first(m, "race") or "unknown" for m in users)),
-        "age": dict(
-            sorted(Counter(age_bucket(first(m, "age")) for m in users).items())
-        ),
+        key: dict(sorted(Counter(u[key] for u in users).items()))
+        for key in ("gender", "race", "age")
     }
 
 

@@ -3,8 +3,8 @@
 Every run validates its datasets first (and refuses invalid ones), uses
 them exactly as ml.data.load_dataset would (deduplicated), and writes to
 ml/experiments/<date>-<protocol>-<model>/:
-  - metrics.json   all numbers, plus provenance: dataset SHA-256s, git
-                   commit, model parameters, the command that reproduces it
+  - metrics.json   all numbers, plus dataset SHA-256s, model parameters
+                   and the command that reproduces the run
   - report.md      the same, human-readable
   - confusion_matrix.png
 
@@ -16,7 +16,6 @@ Usage (from repo root):
 import argparse
 import datetime
 import json
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -29,13 +28,15 @@ from ml.data import dataset_sha256, featurize, load_records
 from ml.evaluate import bootstrap_ci, compute_metrics, plot_confusion_matrix
 from ml.models import available_models, build_model
 from ml.protocols import HAGRID_PATH, OWN_PATH, PROTOCOLS, build_protocol
-from ml.validation import Report, validate
+from ml.validation import Report, hagrid_attributes, validate
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXPERIMENTS_DIR = REPO_ROOT / "ml" / "experiments"
 CV_FOLDS = 5
 N_BOOT = 1000
 SEED = 0
+# Groups smaller than this are reported but flagged: their accuracy is noisy.
+MIN_GROUP_SIZE = 100
 
 
 def load_validated(path: Path) -> tuple[list[dict], dict[str, Any]]:
@@ -57,16 +58,6 @@ def load_validated(path: Path) -> tuple[list[dict], dict[str, Any]]:
         "records_used": len(checked),
         "duplicates_removed": report.stats["duplicates_removed"],
     }
-
-
-def git_commit() -> str:
-    def run(*args: str) -> str:
-        return subprocess.run(
-            ["git", *args], cwd=REPO_ROOT, capture_output=True, text=True
-        ).stdout.strip()
-
-    commit = run("rev-parse", "--short", "HEAD") or "unknown"
-    return commit + ("-dirty" if run("status", "--porcelain") else "")
 
 
 def model_params(model) -> dict[str, str]:
@@ -132,6 +123,12 @@ def run_holdout(data, model_name: str) -> tuple[dict[str, Any], np.ndarray, np.n
         hand: float((y_pred[handedness == hand] == y_test[handedness == hand]).mean())
         for hand in sorted(set(handedness))
     }
+    if all(r.get("source") == "hagrid" for r in data.test):
+        attributes = hagrid_attributes(data.test)
+        if attributes:
+            metrics["accuracy_by_group"] = accuracy_by_group(
+                data.test, y_test, y_pred, attributes
+            )
     result = {
         "metrics": metrics,
         "n_train": len(data.train) if data.train is not None else 0,
@@ -148,6 +145,24 @@ def run_holdout(data, model_name: str) -> tuple[dict[str, Any], np.ndarray, np.n
     return result, y_test, y_pred
 
 
+def accuracy_by_group(
+    test: list[dict], y_test: np.ndarray, y_pred: np.ndarray, attributes: dict
+) -> dict[str, dict[str, dict[str, float]]]:
+    """Accuracy per demographic group (HaGRID meta: gender, race, age)."""
+    correct = y_test == y_pred
+    out: dict[str, dict[str, dict[str, float]]] = {}
+    for key in ("gender", "race", "age"):
+        values = np.array([attributes[r["image_id"]][key] for r in test])
+        out[key] = {
+            value: {
+                "accuracy": float(correct[values == value].mean()),
+                "n": int((values == value).sum()),
+            }
+            for value in sorted(set(values))
+        }
+    return out
+
+
 def write_report(out_dir: Path, result: dict[str, Any]) -> None:
     lines = [
         f"# {result['protocol'].upper()} — `{result['model']}`",
@@ -156,7 +171,7 @@ def write_report(out_dir: Path, result: dict[str, Any]) -> None:
         "",
         f"- Train: {result['train_description']}",
         f"- Test: {result['test_description']}",
-        f"- Date: {result['date']} · commit `{result['git_commit']}`",
+        f"- Date: {result['date']}",
         f"- Reproduce: `{result['command']}`",
         "",
         "## Datasets",
@@ -219,9 +234,25 @@ def write_report(out_dir: Path, result: dict[str, Any]) -> None:
         by_hand = ", ".join(
             f"{hand}: {acc:.3f}" for hand, acc in m["accuracy_by_handedness"].items()
         )
+        lines += ["", f"Accuracy by handedness — {by_hand}."]
+        if "accuracy_by_group" in m:
+            lines += [
+                "",
+                "### By demographic group",
+                "",
+                "HaGRID meta, automatically estimated (FairFace / MiVOLO), so "
+                f"approximate. Groups under {MIN_GROUP_SIZE} samples are marked *.",
+                "",
+                "| Attribute | Group | Accuracy | n |",
+                "|---|---|---:|---:|",
+            ]
+            for key, groups in m["accuracy_by_group"].items():
+                for value, g in groups.items():
+                    star = "*" if g["n"] < MIN_GROUP_SIZE else ""
+                    lines.append(
+                        f"| {key} | {value}{star} | {g['accuracy']:.3f} | {g['n']} |"
+                    )
         lines += [
-            "",
-            f"Accuracy by handedness — {by_hand}.",
             "",
             "![Confusion matrix](confusion_matrix.png)",
             "",
@@ -265,7 +296,6 @@ def main() -> None:
         ),
         "test_description": data.test_description,
         "date": date,
-        "git_commit": git_commit(),
         "command": "uv run python -m ml.eval " + " ".join(sys.argv[1:]),
         "datasets": datasets,
         "seed": SEED,

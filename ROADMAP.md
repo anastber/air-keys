@@ -101,14 +101,24 @@ Known limitation, stated up front: HaGRID consists of still photos, not video, s
 - [x] Refactor `ml/train.py` into `ml/data.py` (loading, grouping, splits) and `ml/evaluate.py` (metrics, reports) *(#3)*
 - [x] Candidate models in one registry (`ml/models.py`: logistic regression, kNN, random forest, MLP), plus the deployed MLP reloaded from its exported weights and run exactly as the frontend does (same forward pass, threshold and background class — tested against sklearn)
 - [x] Protocols P1–P3 (`ml/protocols.py`) and grouped 5-fold CV on HaGRID training subjects for model selection. HaGRID's val split is reserved for Phase 1 calibration. `own_v2` is test-only, so P3 needs no own-data split; its CIs resample recording bursts.
-- [x] Single entry point: `make eval PROTOCOL=p1 MODEL=mlp` → validates the datasets, then writes `metrics.json`, `report.md` and a confusion matrix to `ml/experiments/<date>-<protocol>-<model>/`, with bootstrap 95 % CIs over subjects, per-class metrics, git commit and the command that reproduces the run.
+- [x] Single entry point: `make eval PROTOCOL=p1 MODEL=mlp` → validates the datasets, then writes `metrics.json`, `report.md` and a confusion matrix to `ml/experiments/<date>-<protocol>-<model>/`, with bootstrap 95 % CIs over subjects, per-class metrics and the command that reproduces the run.
 - [x] Add Python ↔ TypeScript **feature parity test** on fixture landmarks (`ml/features.py` vs `lib/customGestures.ts::normalizeLandmarks`), extended to the deployed MLP's forward pass (`ml/models.py` vs `lib/trainedGestures.ts`) — shared fixture `tests/fixtures/parity.json`, run in CI on both sides.
 
 ### 0.5 Re-baseline existing models
-- [ ] Evaluate the current deployed MLP under **P2** — the honest version of today's 99.8 %.
-- [ ] Train and evaluate RandomForest, logistic regression, kNN and the MLP under P1 and P3.
-- [ ] Measure in-browser inference time per frame for each model.
-- [ ] Update the README with the new numbers (expect P2 to drop — that is the point).
+- [x] Evaluate the current deployed MLP under **P2** — the honest version of today's 99.8 %.
+- [x] Select a model by grouped CV on HaGRID training subjects only (rule fixed beforehand: best CV macro-F1, ties within one standard deviation go to the simplest model).
+- [x] Train and evaluate RandomForest, logistic regression, kNN and the MLP under P1 and P3.
+- [x] Break P1/P2 results down by demographic group (HaGRID's estimated gender, ethnicity, age).
+- [x] Measure inference time per frame for each model — in V8, Chrome's JS engine, with the app's own code paths (`npm run bench`).
+- [x] Update the README with the new numbers (expect P2 to drop — that is the point).
+- [ ] Re-run P3 once `own_v2`'s second session is recorded.
+
+> **Status — done** (all runs: [`ml/experiments/README.md`](ml/experiments/README.md)).
+> - **CV selects logistic regression** (macro-F1 0.987 ± 0.002); MLP (0.986 ± 0.004), kNN and random forest (0.980) are tied or close, so the simplest model wins.
+> - **P1:** logistic regression 0.980 [0.974, 0.985] on unseen HaGRID subjects (MLP 0.985 [0.980, 0.989] — overlapping, and switching after seeing the test set would defeat its purpose). Uniform across demographic groups (0.97–0.99).
+> - **P2:** the deployed MLP drops from 99.8 % (its author's hand) to **0.719** [0.702, 0.736]; `call_me` false-triggers (precision 0.36). On the same 4-class task, logistic regression scores 0.990.
+> - **P3** (1 session): **0.990 on the 8 gestures** — the photo → webcam shift is small — but `no_gesture` recall is **0.125**: resting, half-formed and pinching hands are taken for `point`, `ok_sign` or `fist`. HaGRID's `no_gesture` only covers natural resting hands. This makes open-set rejection (Phase 1) the priority before replacing the deployed model.
+> - **Inference** (V8, per frame): normalization 0.6 µs, logistic regression 2 µs, MLP 6 µs, kNN over the training set 0.9 ms — all far below a 33 ms frame; kNN would also have to ship 8,362 training samples.
 
 **Deliverables:** HaGRID extraction pipeline, `own_v2`, datasheet, evaluation harness, parity test, re-baseline report.
 **Done when:** any model can be evaluated under P1–P3 with one command, and the README reports subject-independent results.
@@ -136,7 +146,7 @@ For an instrument, a wrong note or a late note is worse than a missed gesture. T
 - [ ] **Landmark filtering:** One-Euro filter vs. constant-velocity Kalman filter on landmark coordinates. Tune on training sessions.
 - [ ] **Probability calibration:** temperature scaling on the MLP, fitted on HaGRID validation subjects; reliability diagrams and ECE before/after, on both HaGRID test subjects and own sessions (calibration often degrades under domain shift — worth measuring). Makes thresholds meaningful and comparable across models.
 - [ ] **Decision smoothing:** majority vote over a window, hysteresis (separate on/off thresholds), and an HMM / forward filter over class posteriors with a learned transition matrix.
-- [ ] **Open-set rejection:** compare max-softmax threshold, energy score, and distance-to-class-centroid for rejecting "unknown" hand shapes. Evaluate with AUROC on held-out hard negatives — HaGRID's unused classes (`four`, `mute`, `three`, …) provide a large, multi-subject source of realistic "other gesture" samples.
+- [ ] **Open-set rejection** — *the priority after Phase 0.5: a HaGRID-trained model rejects only 12.5 % of the author's resting/half-formed hands.* Compare max-softmax threshold, energy score, and distance-to-class-centroid for rejecting "unknown" hand shapes. Evaluate with AUROC on held-out hard negatives — HaGRID's unused classes (`four`, `mute`, `three`, …) provide a large, multi-subject source of realistic "other gesture" samples.
 - [ ] **Threshold tuning:** replace the hand-picked thresholds (MediaPipe 0.5, MLP 0.6, pinch 0.06) with values chosen on dev data.
 
 ### Feature

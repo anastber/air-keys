@@ -43,20 +43,30 @@ MediaPipe's pretrained recognizer and the client-side kNN cover 5+N poses withou
 
 **Data**: recorded with the `/collect` dev page (`DatasetCollector.tsx`), which runs the exact same in-browser MediaPipe pipeline used at inference time and exports labeled landmark samples as JSON (`gestures_v1.json`). 2,120 samples total across the 4 classes, both hands, varying distance/rotation/position across ~15-19 separate recording bursts per class. (`/collect` has since been extended to 9 classes and per-session tagging for the next dataset — see [Datasets](#datasets).)
 
-**Held-out results** (whole recording bursts are held out, so near-identical consecutive frames never end up on both sides of the split):
+**Original held-out results** (whole recording bursts are held out, so near-identical consecutive frames never end up on both sides of the split):
 
 | Model | Held-out accuracy | Notes |
 |---|---|---|
 | RandomForest (baseline) | 96.6% | Confusion mainly between `ok_sign` and `no_gesture` |
 | MLP, hidden layers (32, 16) — **deployed** | 99.8% | See `ml/experiments/confusion_matrix.png` |
 
-**Caveat: every sample comes from one person (me), in one recording session.** These numbers measure how well the model recognizes *my* hand on 4 distinct static poses, not anyone's. The [roadmap](ROADMAP.md) re-evaluates it on thousands of other people's hands (HaGRID, protocol P2); this section will be updated with those results, which are expected to be lower.
+Every one of those samples came from one person (me), in one session — so they measure how well the model recognizes *my* hand.
+
+### Re-evaluation on other people's hands
+
+Re-evaluated with the [datasets](#datasets) and protocols of [ROADMAP.md](ROADMAP.md) Phase 0. All runs, with confidence intervals, dataset hashes and the command that reproduces each one: [`ml/experiments/README.md`](ml/experiments/README.md). Brackets are bootstrap 95 % confidence intervals over subjects.
+
+- **The deployed MLP does not generalize.** On 1,309 people from HaGRID it never saw, accuracy falls from 99.8 % to **71.9 %** [70.2, 73.6]. Its worst failure is a false trigger: `call_me` fires on other poses (precision 0.36) — a wrong note, in the app.
+- **Trained on many people, a simple model does.** Trained on 6,753 HaGRID subjects for all 9 gestures and selected by grouped cross-validation before any test set was used, a **logistic regression** reaches **98.0 %** [97.4, 98.5] on unseen people — the MLP, kNN and random forest are statistically tied, so the simplest one was kept. Accuracy is uniform across HaGRID's (estimated) gender, ethnicity and age groups, 97–99 %, though some test groups are small (72 Indian, 98 Asian samples); images whose attributes couldn't be estimated score lower (92.8 %), likely harder photos. On the deployed model's own 4-class task: 99.0 % vs 71.9 %.
+- **On my live webcam** (one session, 2,400 frames), the same model recognizes the 8 gestures at **99.0 %** — the photo-to-webcam shift is small. But it labels only **12.5 %** of my resting, half-formed or pinching hands as `no_gesture`: it calls them `point`, `ok_sign` or `fist`. HaGRID's `no_gesture` class contains only natural resting hands, so the model never learned to reject anything else. Rejecting unknown hand shapes is the next step ([ROADMAP.md](ROADMAP.md), Phase 1).
+
+The app still ships the original MLP: replacing it waits on that rejection problem.
 
 **Feature engineering**: the same wrist-centered, hand-span-scaled, handedness-mirrored normalization already used by the client-side kNN (`lib/customGestures.ts::normalizeLandmarks`), ported to Python (`ml/features.py`) so train-time and inference-time preprocessing stay identical.
 
 **Deployment, without an inference runtime**: the MLP is small enough that its weight matrices (`coefs_`/`intercepts_`) export straight to JSON, and `lib/trainedGestures.ts` hand-rolls the forward pass (two dense layers + ReLU + softmax) in ~30 lines of TypeScript — no ONNX Runtime Web or TensorFlow.js dependency, consistent with this app's existing precedent of hand-rolling classification client-side (the kNN does the same).
 
-**Reproducing it**: `uv run python -m ml.train` (needs `ml/data/gestures_v1.json`, collected via `/collect`). The exported weights JSON and confusion matrix are committed to git as evidence + the deployable artifact; the raw dataset and full sklearn pickle aren't (privacy + size) — see `.gitignore`. `frontend/scripts/setup-mediapipe.mjs` copies the committed weights into the gitignored `public/` dir on every install.
+**Reproducing it**: the original model with `uv run python -m ml.train` (needs `ml/data/gestures_v1.json`, collected via `/collect`); the re-evaluation with `make eval PROTOCOL=<cv|p1|p2|p3> MODEL=<logreg|knn|rf|mlp|deployed>`, summarized by `uv run python -m ml.summarize`. The deployed weights JSON and the experiment reports are committed to git; the datasets and the full sklearn pickle aren't (privacy + size) — see `.gitignore`. `frontend/scripts/setup-mediapipe.mjs` copies the committed weights into the gitignored `public/` dir on every install.
 
 ## Datasets
 

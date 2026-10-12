@@ -1,0 +1,237 @@
+{
+  "protocol": "p3",
+  "model": "knn",
+  "question": "Does a model learned from HaGRID photos work on live webcam video in the app?",
+  "train_description": "HaGRID train subjects",
+  "test_description": "own_v2 (live webcam)",
+  "date": "2026-10-12",
+  "command": "uv run python -m ml.eval --protocol p3 --model knn",
+  "datasets": {
+    "hagrid_landmarks_v1": {
+      "path": "ml/data/hagrid_landmarks_v1/records.jsonl",
+      "sha256": "d5db335e537d9a85b401307a1c6cfbbefbd01ae42be33a88d41fdd05fdebdb33",
+      "records_raw": 12495,
+      "records_used": 12485,
+      "duplicates_removed": 10
+    },
+    "own_v2": {
+      "path": "ml/data/own_v2.json",
+      "sha256": "fe1abff90fc9e068d7214d1628f1370f113e922b1921c3df185b004fe216ebb3",
+      "records_raw": 2400,
+      "records_used": 2400,
+      "duplicates_removed": 0
+    }
+  },
+  "seed": 0,
+  "metrics": {
+    "accuracy": 0.8804166666666666,
+    "macro_f1": 0.856832935407663,
+    "per_class": {
+      "call_me": {
+        "precision": 0.9885931558935361,
+        "recall": 1.0,
+        "f1": 0.994263862332696,
+        "support": 260
+      },
+      "fist": {
+        "precision": 0.7617647058823529,
+        "recall": 0.9961538461538462,
+        "f1": 0.8633333333333333,
+        "support": 260
+      },
+      "no_gesture": {
+        "precision": 1.0,
+        "recall": 0.121875,
+        "f1": 0.21727019498607242,
+        "support": 320
+      },
+      "ok_sign": {
+        "precision": 0.8986013986013986,
+        "recall": 0.9884615384615385,
+        "f1": 0.9413919413919414,
+        "support": 260
+      },
+      "open_palm": {
+        "precision": 0.8253968253968254,
+        "recall": 1.0,
+        "f1": 0.9043478260869565,
+        "support": 260
+      },
+      "peace": {
+        "precision": 0.9252669039145908,
+        "recall": 1.0,
+        "f1": 0.9611829944547134,
+        "support": 260
+      },
+      "point": {
+        "precision": 0.7624633431085044,
+        "recall": 1.0,
+        "f1": 0.8652246256239601,
+        "support": 260
+      },
+      "rock_on": {
+        "precision": 1.0,
+        "recall": 0.9923076923076923,
+        "f1": 0.9961389961389961,
+        "support": 260
+      },
+      "thumbs_up": {
+        "precision": 0.9386281588447654,
+        "recall": 1.0,
+        "f1": 0.9683426443202979,
+        "support": 260
+      }
+    },
+    "labels": [
+      "call_me",
+      "fist",
+      "no_gesture",
+      "ok_sign",
+      "open_palm",
+      "peace",
+      "point",
+      "rock_on",
+      "thumbs_up"
+    ],
+    "confusion_matrix": [
+      [
+        260,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        259,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        3,
+        80,
+        39,
+        28,
+        52,
+        21,
+        80,
+        0,
+        17,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        257,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        260,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        260,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        260,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        258,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        260,
+        0
+      ]
+    ],
+    "ci95": {
+      "accuracy": [
+        0.8094821761416588,
+        0.9368654970760234
+      ],
+      "macro_f1": [
+        0.7937520944938711,
+        0.8961333315557433
+      ]
+    },
+    "accuracy_by_handedness": {
+      "Left": 0.8917710196779964,
+      "Right": 0.8705148205928237
+    }
+  },
+  "n_train": 8362,
+  "train_subjects": 6753,
+  "n_test": 2400,
+  "test_groups": 81,
+  "fit_seconds": 0.0,
+  "predict_ms_per_sample": 0.0255,
+  "model_params": {
+    "algorithm": "'auto'",
+    "leaf_size": "30",
+    "metric": "'minkowski'",
+    "metric_params": "None",
+    "n_jobs": "None",
+    "n_neighbors": "5",
+    "p": "2",
+    "weights": "'uniform'"
+  }
+}
