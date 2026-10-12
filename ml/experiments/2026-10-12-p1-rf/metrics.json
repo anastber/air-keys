@@ -1,0 +1,305 @@
+{
+  "protocol": "p1",
+  "model": "rf",
+  "question": "Does the model generalize to people it never saw?",
+  "train_description": "HaGRID train subjects",
+  "test_description": "HaGRID test subjects",
+  "date": "2026-10-12",
+  "command": "uv run python -m ml.eval --protocol p1 --model rf",
+  "datasets": {
+    "hagrid_landmarks_v1": {
+      "path": "ml/data/hagrid_landmarks_v1/records.jsonl",
+      "sha256": "d5db335e537d9a85b401307a1c6cfbbefbd01ae42be33a88d41fdd05fdebdb33",
+      "records_raw": 12495,
+      "records_used": 12485,
+      "duplicates_removed": 10
+    }
+  },
+  "seed": 0,
+  "metrics": {
+    "accuracy": 0.9787745294353224,
+    "macro_f1": 0.9788381330062885,
+    "per_class": {
+      "call_me": {
+        "precision": 0.9924242424242424,
+        "recall": 0.9562043795620438,
+        "f1": 0.9739776951672863,
+        "support": 274
+      },
+      "fist": {
+        "precision": 0.9855072463768116,
+        "recall": 1.0,
+        "f1": 0.9927007299270073,
+        "support": 272
+      },
+      "no_gesture": {
+        "precision": 0.9471830985915493,
+        "recall": 0.9340277777777778,
+        "f1": 0.9405594405594405,
+        "support": 288
+      },
+      "ok_sign": {
+        "precision": 0.99644128113879,
+        "recall": 0.9929078014184397,
+        "f1": 0.9946714031971581,
+        "support": 282
+      },
+      "open_palm": {
+        "precision": 0.9929328621908127,
+        "recall": 0.9894366197183099,
+        "f1": 0.9911816578483245,
+        "support": 284
+      },
+      "peace": {
+        "precision": 0.9857651245551602,
+        "recall": 0.992831541218638,
+        "f1": 0.9892857142857143,
+        "support": 279
+      },
+      "point": {
+        "precision": 0.9782608695652174,
+        "recall": 0.9926470588235294,
+        "f1": 0.9854014598540146,
+        "support": 272
+      },
+      "rock_on": {
+        "precision": 0.989010989010989,
+        "recall": 0.9818181818181818,
+        "f1": 0.9854014598540146,
+        "support": 275
+      },
+      "thumbs_up": {
+        "precision": 0.942652329749104,
+        "recall": 0.9704797047970479,
+        "f1": 0.9563636363636364,
+        "support": 271
+      }
+    },
+    "labels": [
+      "call_me",
+      "fist",
+      "no_gesture",
+      "ok_sign",
+      "open_palm",
+      "peace",
+      "point",
+      "rock_on",
+      "thumbs_up"
+    ],
+    "confusion_matrix": [
+      [
+        262,
+        0,
+        5,
+        0,
+        0,
+        0,
+        0,
+        1,
+        6,
+        0
+      ],
+      [
+        0,
+        272,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        2,
+        2,
+        269,
+        1,
+        1,
+        1,
+        0,
+        2,
+        10,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        280,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        281,
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        277,
+        2,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        270,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        4,
+        270,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        263,
+        0
+      ]
+    ],
+    "ci95": {
+      "accuracy": [
+        0.9727672434563752,
+        0.9841140610415599
+      ],
+      "macro_f1": [
+        0.9731327899535256,
+        0.9841782485254197
+      ]
+    },
+    "accuracy_by_handedness": {
+      "Left": 0.97789566755084,
+      "Right": 0.9795021961932651
+    },
+    "accuracy_by_group": {
+      "gender": {
+        "female": {
+          "accuracy": 0.9873887240356083,
+          "n": 1348
+        },
+        "male": {
+          "accuracy": 0.9686684073107049,
+          "n": 1149
+        }
+      },
+      "race": {
+        "Asian": {
+          "accuracy": 0.9897959183673469,
+          "n": 98
+        },
+        "Black": {
+          "accuracy": 0.9707317073170731,
+          "n": 205
+        },
+        "Indian": {
+          "accuracy": 0.9861111111111112,
+          "n": 72
+        },
+        "White": {
+          "accuracy": 0.9813508064516129,
+          "n": 1984
+        },
+        "unknown": {
+          "accuracy": 0.9420289855072463,
+          "n": 138
+        }
+      },
+      "age": {
+        "0-9": {
+          "accuracy": 1.0,
+          "n": 4
+        },
+        "10-19": {
+          "accuracy": 0.9777158774373259,
+          "n": 359
+        },
+        "20-29": {
+          "accuracy": 0.980884109916368,
+          "n": 837
+        },
+        "30-39": {
+          "accuracy": 0.9755469755469756,
+          "n": 777
+        },
+        "40-49": {
+          "accuracy": 0.9840425531914894,
+          "n": 376
+        },
+        "50-59": {
+          "accuracy": 0.9649122807017544,
+          "n": 114
+        },
+        "60+": {
+          "accuracy": 1.0,
+          "n": 30
+        }
+      }
+    }
+  },
+  "n_train": 8362,
+  "train_subjects": 6753,
+  "n_test": 2497,
+  "test_groups": 1309,
+  "fit_seconds": 5.69,
+  "predict_ms_per_sample": 0.0147,
+  "model_params": {
+    "bootstrap": "True",
+    "ccp_alpha": "0.0",
+    "class_weight": "None",
+    "criterion": "'gini'",
+    "max_depth": "10",
+    "max_features": "'sqrt'",
+    "max_leaf_nodes": "None",
+    "max_samples": "None",
+    "min_impurity_decrease": "0.0",
+    "min_samples_leaf": "1",
+    "min_samples_split": "2",
+    "min_weight_fraction_leaf": "0.0",
+    "monotonic_cst": "None",
+    "n_estimators": "150",
+    "n_jobs": "None",
+    "oob_score": "False",
+    "random_state": "42",
+    "verbose": "0",
+    "warm_start": "False"
+  }
+}

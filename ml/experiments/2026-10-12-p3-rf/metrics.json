@@ -1,0 +1,248 @@
+{
+  "protocol": "p3",
+  "model": "rf",
+  "question": "Does a model learned from HaGRID photos work on live webcam video in the app?",
+  "train_description": "HaGRID train subjects",
+  "test_description": "own_v2 (live webcam)",
+  "date": "2026-10-12",
+  "command": "uv run python -m ml.eval --protocol p3 --model rf",
+  "datasets": {
+    "hagrid_landmarks_v1": {
+      "path": "ml/data/hagrid_landmarks_v1/records.jsonl",
+      "sha256": "d5db335e537d9a85b401307a1c6cfbbefbd01ae42be33a88d41fdd05fdebdb33",
+      "records_raw": 12495,
+      "records_used": 12485,
+      "duplicates_removed": 10
+    },
+    "own_v2": {
+      "path": "ml/data/own_v2.json",
+      "sha256": "fe1abff90fc9e068d7214d1628f1370f113e922b1921c3df185b004fe216ebb3",
+      "records_raw": 2400,
+      "records_used": 2400,
+      "duplicates_removed": 0
+    }
+  },
+  "seed": 0,
+  "metrics": {
+    "accuracy": 0.8791666666666667,
+    "macro_f1": 0.8564330373604077,
+    "per_class": {
+      "call_me": {
+        "precision": 0.927797833935018,
+        "recall": 0.9884615384615385,
+        "f1": 0.957169459962756,
+        "support": 260
+      },
+      "fist": {
+        "precision": 0.7602339181286549,
+        "recall": 1.0,
+        "f1": 0.8637873754152824,
+        "support": 260
+      },
+      "no_gesture": {
+        "precision": 0.925,
+        "recall": 0.115625,
+        "f1": 0.20555555555555555,
+        "support": 320
+      },
+      "ok_sign": {
+        "precision": 0.927797833935018,
+        "recall": 0.9884615384615385,
+        "f1": 0.957169459962756,
+        "support": 260
+      },
+      "open_palm": {
+        "precision": 0.7580174927113703,
+        "recall": 1.0,
+        "f1": 0.8623548922056384,
+        "support": 260
+      },
+      "peace": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 260
+      },
+      "point": {
+        "precision": 0.7602339181286549,
+        "recall": 1.0,
+        "f1": 0.8637873754152824,
+        "support": 260
+      },
+      "rock_on": {
+        "precision": 1.0,
+        "recall": 0.9961538461538462,
+        "f1": 0.9980732177263969,
+        "support": 260
+      },
+      "thumbs_up": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 260
+      }
+    },
+    "labels": [
+      "call_me",
+      "fist",
+      "no_gesture",
+      "ok_sign",
+      "open_palm",
+      "peace",
+      "point",
+      "rock_on",
+      "thumbs_up"
+    ],
+    "confusion_matrix": [
+      [
+        257,
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        260,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        20,
+        81,
+        37,
+        20,
+        80,
+        0,
+        82,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        257,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        260,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        260,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        260,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        259,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        260,
+        0
+      ]
+    ],
+    "ci95": {
+      "accuracy": [
+        0.8079985764065952,
+        0.936976679160873
+      ],
+      "macro_f1": [
+        0.7943749478744679,
+        0.8959429394611804
+      ]
+    },
+    "accuracy_by_handedness": {
+      "Left": 0.8872987477638641,
+      "Right": 0.8720748829953198
+    }
+  },
+  "n_train": 8362,
+  "train_subjects": 6753,
+  "n_test": 2400,
+  "test_groups": 81,
+  "fit_seconds": 4.79,
+  "predict_ms_per_sample": 0.0077,
+  "model_params": {
+    "bootstrap": "True",
+    "ccp_alpha": "0.0",
+    "class_weight": "None",
+    "criterion": "'gini'",
+    "max_depth": "10",
+    "max_features": "'sqrt'",
+    "max_leaf_nodes": "None",
+    "max_samples": "None",
+    "min_impurity_decrease": "0.0",
+    "min_samples_leaf": "1",
+    "min_samples_split": "2",
+    "min_weight_fraction_leaf": "0.0",
+    "monotonic_cst": "None",
+    "n_estimators": "150",
+    "n_jobs": "None",
+    "oob_score": "False",
+    "random_state": "42",
+    "verbose": "0",
+    "warm_start": "False"
+  }
+}

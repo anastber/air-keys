@@ -1,0 +1,60 @@
+{
+  "protocol": "cv",
+  "model": "logreg",
+  "question": "Model selection: grouped cross-validation on HaGRID training subjects.",
+  "train_description": "HaGRID train subjects",
+  "test_description": "none (cross-validation)",
+  "date": "2026-10-12",
+  "command": "uv run python -m ml.eval --protocol cv --model logreg",
+  "datasets": {
+    "hagrid_landmarks_v1": {
+      "path": "ml/data/hagrid_landmarks_v1/records.jsonl",
+      "sha256": "d5db335e537d9a85b401307a1c6cfbbefbd01ae42be33a88d41fdd05fdebdb33",
+      "records_raw": 12495,
+      "records_used": 12485,
+      "duplicates_removed": 10
+    }
+  },
+  "seed": 0,
+  "cv": {
+    "folds": [
+      {
+        "fold": 0,
+        "accuracy": 0.9892408846383742,
+        "macro_f1": 0.9891280711142871
+      },
+      {
+        "fold": 1,
+        "accuracy": 0.9892408846383742,
+        "macro_f1": 0.989144360968257
+      },
+      {
+        "fold": 2,
+        "accuracy": 0.9850478468899522,
+        "macro_f1": 0.985274403698529
+      },
+      {
+        "fold": 3,
+        "accuracy": 0.9850478468899522,
+        "macro_f1": 0.9849010482572168
+      },
+      {
+        "fold": 4,
+        "accuracy": 0.9850478468899522,
+        "macro_f1": 0.9848520405959754
+      }
+    ],
+    "summary": {
+      "accuracy": {
+        "mean": 0.9867250619893209,
+        "std": 0.0020541605911725
+      },
+      "macro_f1": {
+        "mean": 0.986659984926853,
+        "std": 0.002027112724805024
+      }
+    },
+    "n_train": 8362,
+    "train_subjects": 6753
+  }
+}

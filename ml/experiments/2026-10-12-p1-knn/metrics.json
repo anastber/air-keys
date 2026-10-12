@@ -1,0 +1,294 @@
+{
+  "protocol": "p1",
+  "model": "knn",
+  "question": "Does the model generalize to people it never saw?",
+  "train_description": "HaGRID train subjects",
+  "test_description": "HaGRID test subjects",
+  "date": "2026-10-12",
+  "command": "uv run python -m ml.eval --protocol p1 --model knn",
+  "datasets": {
+    "hagrid_landmarks_v1": {
+      "path": "ml/data/hagrid_landmarks_v1/records.jsonl",
+      "sha256": "d5db335e537d9a85b401307a1c6cfbbefbd01ae42be33a88d41fdd05fdebdb33",
+      "records_raw": 12495,
+      "records_used": 12485,
+      "duplicates_removed": 10
+    }
+  },
+  "seed": 0,
+  "metrics": {
+    "accuracy": 0.9763716459751702,
+    "macro_f1": 0.9763675231514504,
+    "per_class": {
+      "call_me": {
+        "precision": 0.9633699633699634,
+        "recall": 0.9598540145985401,
+        "f1": 0.9616087751371115,
+        "support": 274
+      },
+      "fist": {
+        "precision": 0.9818840579710145,
+        "recall": 0.9963235294117647,
+        "f1": 0.9890510948905109,
+        "support": 272
+      },
+      "no_gesture": {
+        "precision": 0.9743589743589743,
+        "recall": 0.9236111111111112,
+        "f1": 0.948306595365419,
+        "support": 288
+      },
+      "ok_sign": {
+        "precision": 0.9893992932862191,
+        "recall": 0.9929078014184397,
+        "f1": 0.9911504424778761,
+        "support": 282
+      },
+      "open_palm": {
+        "precision": 0.9893992932862191,
+        "recall": 0.9859154929577465,
+        "f1": 0.9876543209876543,
+        "support": 284
+      },
+      "peace": {
+        "precision": 0.9892857142857143,
+        "recall": 0.992831541218638,
+        "f1": 0.9910554561717353,
+        "support": 279
+      },
+      "point": {
+        "precision": 0.9781818181818182,
+        "recall": 0.9889705882352942,
+        "f1": 0.9835466179159049,
+        "support": 272
+      },
+      "rock_on": {
+        "precision": 0.9962825278810409,
+        "recall": 0.9745454545454545,
+        "f1": 0.9852941176470589,
+        "support": 275
+      },
+      "thumbs_up": {
+        "precision": 0.9263157894736842,
+        "recall": 0.974169741697417,
+        "f1": 0.9496402877697842,
+        "support": 271
+      }
+    },
+    "labels": [
+      "call_me",
+      "fist",
+      "no_gesture",
+      "ok_sign",
+      "open_palm",
+      "peace",
+      "point",
+      "rock_on",
+      "thumbs_up"
+    ],
+    "confusion_matrix": [
+      [
+        263,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        10,
+        0
+      ],
+      [
+        0,
+        271,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        8,
+        0,
+        266,
+        1,
+        1,
+        2,
+        0,
+        0,
+        10,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        280,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        2,
+        1,
+        280,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        277,
+        2,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        269,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        4,
+        268,
+        0,
+        0
+      ],
+      [
+        1,
+        2,
+        4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        264,
+        0
+      ]
+    ],
+    "ci95": {
+      "accuracy": [
+        0.969990288127028,
+        0.9822319339279294
+      ],
+      "macro_f1": [
+        0.9700234897096794,
+        0.9821816373701832
+      ]
+    },
+    "accuracy_by_handedness": {
+      "Left": 0.969053934571176,
+      "Right": 0.9824304538799414
+    },
+    "accuracy_by_group": {
+      "gender": {
+        "female": {
+          "accuracy": 0.9814540059347181,
+          "n": 1348
+        },
+        "male": {
+          "accuracy": 0.9704090513489991,
+          "n": 1149
+        }
+      },
+      "race": {
+        "Asian": {
+          "accuracy": 0.9897959183673469,
+          "n": 98
+        },
+        "Black": {
+          "accuracy": 0.9804878048780488,
+          "n": 205
+        },
+        "Indian": {
+          "accuracy": 0.9861111111111112,
+          "n": 72
+        },
+        "White": {
+          "accuracy": 0.9788306451612904,
+          "n": 1984
+        },
+        "unknown": {
+          "accuracy": 0.9202898550724637,
+          "n": 138
+        }
+      },
+      "age": {
+        "0-9": {
+          "accuracy": 1.0,
+          "n": 4
+        },
+        "10-19": {
+          "accuracy": 0.9832869080779945,
+          "n": 359
+        },
+        "20-29": {
+          "accuracy": 0.97610513739546,
+          "n": 837
+        },
+        "30-39": {
+          "accuracy": 0.9691119691119691,
+          "n": 777
+        },
+        "40-49": {
+          "accuracy": 0.9813829787234043,
+          "n": 376
+        },
+        "50-59": {
+          "accuracy": 0.9824561403508771,
+          "n": 114
+        },
+        "60+": {
+          "accuracy": 1.0,
+          "n": 30
+        }
+      }
+    }
+  },
+  "n_train": 8362,
+  "train_subjects": 6753,
+  "n_test": 2497,
+  "test_groups": 1309,
+  "fit_seconds": 0.0,
+  "predict_ms_per_sample": 0.024,
+  "model_params": {
+    "algorithm": "'auto'",
+    "leaf_size": "30",
+    "metric": "'minkowski'",
+    "metric_params": "None",
+    "n_jobs": "None",
+    "n_neighbors": "5",
+    "p": "2",
+    "weights": "'uniform'"
+  }
+}

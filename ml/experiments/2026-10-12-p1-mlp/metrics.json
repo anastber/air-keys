@@ -1,0 +1,309 @@
+{
+  "protocol": "p1",
+  "model": "mlp",
+  "question": "Does the model generalize to people it never saw?",
+  "train_description": "HaGRID train subjects",
+  "test_description": "HaGRID test subjects",
+  "date": "2026-10-12",
+  "command": "uv run python -m ml.eval --protocol p1 --model mlp",
+  "datasets": {
+    "hagrid_landmarks_v1": {
+      "path": "ml/data/hagrid_landmarks_v1/records.jsonl",
+      "sha256": "d5db335e537d9a85b401307a1c6cfbbefbd01ae42be33a88d41fdd05fdebdb33",
+      "records_raw": 12495,
+      "records_used": 12485,
+      "duplicates_removed": 10
+    }
+  },
+  "seed": 0,
+  "metrics": {
+    "accuracy": 0.9847817380857028,
+    "macro_f1": 0.9847304833345427,
+    "per_class": {
+      "call_me": {
+        "precision": 0.9710144927536232,
+        "recall": 0.9781021897810219,
+        "f1": 0.9745454545454545,
+        "support": 274
+      },
+      "fist": {
+        "precision": 0.9783393501805054,
+        "recall": 0.9963235294117647,
+        "f1": 0.9872495446265938,
+        "support": 272
+      },
+      "no_gesture": {
+        "precision": 0.9856115107913669,
+        "recall": 0.9513888888888888,
+        "f1": 0.9681978798586572,
+        "support": 288
+      },
+      "ok_sign": {
+        "precision": 0.9929328621908127,
+        "recall": 0.9964539007092199,
+        "f1": 0.9946902654867257,
+        "support": 282
+      },
+      "open_palm": {
+        "precision": 0.9964912280701754,
+        "recall": 1.0,
+        "f1": 0.9982425307557118,
+        "support": 284
+      },
+      "peace": {
+        "precision": 0.9964028776978417,
+        "recall": 0.992831541218638,
+        "f1": 0.9946140035906643,
+        "support": 279
+      },
+      "point": {
+        "precision": 0.9781818181818182,
+        "recall": 0.9889705882352942,
+        "f1": 0.9835466179159049,
+        "support": 272
+      },
+      "rock_on": {
+        "precision": 0.996309963099631,
+        "recall": 0.9818181818181818,
+        "f1": 0.989010989010989,
+        "support": 275
+      },
+      "thumbs_up": {
+        "precision": 0.9671532846715328,
+        "recall": 0.977859778597786,
+        "f1": 0.9724770642201835,
+        "support": 271
+      }
+    },
+    "labels": [
+      "call_me",
+      "fist",
+      "no_gesture",
+      "ok_sign",
+      "open_palm",
+      "peace",
+      "point",
+      "rock_on",
+      "thumbs_up"
+    ],
+    "confusion_matrix": [
+      [
+        268,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0
+      ],
+      [
+        0,
+        271,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        3,
+        4,
+        274,
+        1,
+        1,
+        0,
+        0,
+        0,
+        5,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        281,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        284,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        277,
+        2,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        269,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        4,
+        270,
+        0,
+        0
+      ],
+      [
+        4,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        265,
+        0
+      ]
+    ],
+    "ci95": {
+      "accuracy": [
+        0.979683006627288,
+        0.9892650931314911
+      ],
+      "macro_f1": [
+        0.9795330078725502,
+        0.989204913481783
+      ]
+    },
+    "accuracy_by_handedness": {
+      "Left": 0.982316534040672,
+      "Right": 0.986822840409956
+    },
+    "accuracy_by_group": {
+      "gender": {
+        "female": {
+          "accuracy": 0.9888724035608308,
+          "n": 1348
+        },
+        "male": {
+          "accuracy": 0.979982593559617,
+          "n": 1149
+        }
+      },
+      "race": {
+        "Asian": {
+          "accuracy": 0.9795918367346939,
+          "n": 98
+        },
+        "Black": {
+          "accuracy": 0.9804878048780488,
+          "n": 205
+        },
+        "Indian": {
+          "accuracy": 0.9861111111111112,
+          "n": 72
+        },
+        "White": {
+          "accuracy": 0.9879032258064516,
+          "n": 1984
+        },
+        "unknown": {
+          "accuracy": 0.9492753623188406,
+          "n": 138
+        }
+      },
+      "age": {
+        "0-9": {
+          "accuracy": 1.0,
+          "n": 4
+        },
+        "10-19": {
+          "accuracy": 0.9944289693593314,
+          "n": 359
+        },
+        "20-29": {
+          "accuracy": 0.983273596176822,
+          "n": 837
+        },
+        "30-39": {
+          "accuracy": 0.9794079794079794,
+          "n": 777
+        },
+        "40-49": {
+          "accuracy": 0.9893617021276596,
+          "n": 376
+        },
+        "50-59": {
+          "accuracy": 0.9824561403508771,
+          "n": 114
+        },
+        "60+": {
+          "accuracy": 1.0,
+          "n": 30
+        }
+      }
+    }
+  },
+  "n_train": 8362,
+  "train_subjects": 6753,
+  "n_test": 2497,
+  "test_groups": 1309,
+  "fit_seconds": 3.66,
+  "predict_ms_per_sample": 0.0005,
+  "model_params": {
+    "activation": "'relu'",
+    "alpha": "0.0001",
+    "batch_size": "'auto'",
+    "beta_1": "0.9",
+    "beta_2": "0.999",
+    "early_stopping": "False",
+    "epsilon": "1e-08",
+    "hidden_layer_sizes": "(32, 16)",
+    "learning_rate": "'constant'",
+    "learning_rate_init": "0.001",
+    "max_fun": "15000",
+    "max_iter": "2000",
+    "momentum": "0.9",
+    "n_iter_no_change": "10",
+    "nesterovs_momentum": "True",
+    "power_t": "0.5",
+    "random_state": "42",
+    "shuffle": "True",
+    "solver": "'adam'",
+    "tol": "0.0001",
+    "validation_fraction": "0.1",
+    "verbose": "False",
+    "warm_start": "False"
+  }
+}

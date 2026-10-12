@@ -3,8 +3,8 @@
 Every run validates its datasets first (and refuses invalid ones), uses
 them exactly as ml.data.load_dataset would (deduplicated), and writes to
 ml/experiments/<date>-<protocol>-<model>/:
-  - metrics.json   all numbers, plus provenance: dataset SHA-256s, git
-                   commit, model parameters, the command that reproduces it
+  - metrics.json   all numbers, plus dataset SHA-256s, model parameters
+                   and the command that reproduces the run
   - report.md      the same, human-readable
   - confusion_matrix.png
 
@@ -16,7 +16,6 @@ Usage (from repo root):
 import argparse
 import datetime
 import json
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -59,16 +58,6 @@ def load_validated(path: Path) -> tuple[list[dict], dict[str, Any]]:
         "records_used": len(checked),
         "duplicates_removed": report.stats["duplicates_removed"],
     }
-
-
-def git_commit() -> str:
-    def run(*args: str) -> str:
-        return subprocess.run(
-            ["git", *args], cwd=REPO_ROOT, capture_output=True, text=True
-        ).stdout.strip()
-
-    commit = run("rev-parse", "--short", "HEAD") or "unknown"
-    return commit + ("-dirty" if run("status", "--porcelain") else "")
 
 
 def model_params(model) -> dict[str, str]:
@@ -182,7 +171,7 @@ def write_report(out_dir: Path, result: dict[str, Any]) -> None:
         "",
         f"- Train: {result['train_description']}",
         f"- Test: {result['test_description']}",
-        f"- Date: {result['date']} · commit `{result['git_commit']}`",
+        f"- Date: {result['date']}",
         f"- Reproduce: `{result['command']}`",
         "",
         "## Datasets",
@@ -307,7 +296,6 @@ def main() -> None:
         ),
         "test_description": data.test_description,
         "date": date,
-        "git_commit": git_commit(),
         "command": "uv run python -m ml.eval " + " ".join(sys.argv[1:]),
         "datasets": datasets,
         "seed": SEED,

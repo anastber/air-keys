@@ -1,0 +1,172 @@
+{
+  "protocol": "p2",
+  "model": "deployed",
+  "question": "Does the deployed model, trained on one person's hand, work on thousands of others?",
+  "train_description": "none \u2014 deployed weights (author's own recordings, gestures_v1)",
+  "test_description": "HaGRID test subjects",
+  "date": "2026-10-12",
+  "command": "uv run python -m ml.eval --protocol p2 --model deployed",
+  "datasets": {
+    "hagrid_landmarks_v1": {
+      "path": "ml/data/hagrid_landmarks_v1/records.jsonl",
+      "sha256": "d5db335e537d9a85b401307a1c6cfbbefbd01ae42be33a88d41fdd05fdebdb33",
+      "records_raw": 12495,
+      "records_used": 12485,
+      "duplicates_removed": 10
+    }
+  },
+  "seed": 0,
+  "metrics": {
+    "accuracy": 0.7192631157388867,
+    "macro_f1": 0.6936216943899705,
+    "per_class": {
+      "call_me": {
+        "precision": 0.36027397260273974,
+        "recall": 0.9598540145985401,
+        "f1": 0.5239043824701195,
+        "support": 274
+      },
+      "no_gesture": {
+        "precision": 0.8413696715583509,
+        "recall": 0.7226890756302521,
+        "f1": 0.7775266386825961,
+        "support": 1666
+      },
+      "ok_sign": {
+        "precision": 0.9608938547486033,
+        "recall": 0.6099290780141844,
+        "f1": 0.7462039045553145,
+        "support": 282
+      },
+      "rock_on": {
+        "precision": 1.0,
+        "recall": 0.5709090909090909,
+        "f1": 0.7268518518518519,
+        "support": 275
+      }
+    },
+    "labels": [
+      "call_me",
+      "no_gesture",
+      "ok_sign",
+      "rock_on"
+    ],
+    "confusion_matrix": [
+      [
+        263,
+        10,
+        1,
+        0,
+        0
+      ],
+      [
+        456,
+        1204,
+        6,
+        0,
+        0
+      ],
+      [
+        1,
+        109,
+        172,
+        0,
+        0
+      ],
+      [
+        10,
+        108,
+        0,
+        157,
+        0
+      ]
+    ],
+    "ci95": {
+      "accuracy": [
+        0.7020546764260932,
+        0.7356843451950054
+      ],
+      "macro_f1": [
+        0.6725454107920483,
+        0.7144665372911931
+      ]
+    },
+    "accuracy_by_handedness": {
+      "Left": 0.7161803713527851,
+      "Right": 0.7218155197657394
+    },
+    "accuracy_by_group": {
+      "gender": {
+        "female": {
+          "accuracy": 0.7084569732937686,
+          "n": 1348
+        },
+        "male": {
+          "accuracy": 0.731940818102698,
+          "n": 1149
+        }
+      },
+      "race": {
+        "Asian": {
+          "accuracy": 0.6938775510204082,
+          "n": 98
+        },
+        "Black": {
+          "accuracy": 0.8195121951219512,
+          "n": 205
+        },
+        "Indian": {
+          "accuracy": 0.8194444444444444,
+          "n": 72
+        },
+        "White": {
+          "accuracy": 0.7394153225806451,
+          "n": 1984
+        },
+        "unknown": {
+          "accuracy": 0.2463768115942029,
+          "n": 138
+        }
+      },
+      "age": {
+        "0-9": {
+          "accuracy": 0.5,
+          "n": 4
+        },
+        "10-19": {
+          "accuracy": 0.713091922005571,
+          "n": 359
+        },
+        "20-29": {
+          "accuracy": 0.7060931899641577,
+          "n": 837
+        },
+        "30-39": {
+          "accuracy": 0.7117117117117117,
+          "n": 777
+        },
+        "40-49": {
+          "accuracy": 0.7686170212765957,
+          "n": 376
+        },
+        "50-59": {
+          "accuracy": 0.7192982456140351,
+          "n": 114
+        },
+        "60+": {
+          "accuracy": 0.7666666666666667,
+          "n": 30
+        }
+      }
+    }
+  },
+  "n_train": 0,
+  "train_subjects": 0,
+  "n_test": 2497,
+  "test_groups": 1309,
+  "fit_seconds": 0.0,
+  "predict_ms_per_sample": 0.0006,
+  "model_params": {
+    "weights_path": "PosixPath('/Users/anas/Developer/air-keys-project/ml/experiments/gesture_mlp_weights.json')"
+  }
+}
