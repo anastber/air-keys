@@ -1,9 +1,17 @@
 """Dataset loading, featurization and leakage-safe train/test splitting.
 
-Records are the JSON objects exported by
-frontend/src/components/DatasetCollector.tsx:
-    {"label": str, "landmarks": [{"x","y","z"} x 21],
-     "handedness": str, "timestamp": float}
+Every record carries at least:
+    {"label": str, "landmarks": [{"x","y","z"} x 21], "handedness": str}
+
+Own recordings (frontend/src/components/DatasetCollector.tsx) add
+    "timestamp": float  — used to group frames into recording bursts
+and, from schema_version 2 on (own_v2):
+    "schema_version": 2, "source": "own", "session_id": str,
+    "camera": str, "resolution": {"width": int, "height": int},
+    "lighting": "daylight" | "artificial" | "dim" | "backlit"
+
+HaGRID records (ml/datasets/hagrid.py) add "source": "hagrid", "user_id"
+and HaGRID's official "split" instead.
 """
 
 import json

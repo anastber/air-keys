@@ -1,43 +1,72 @@
 'use client';
 
-// Temporary dev tool for collecting the labeled dataset that ml/train.py
-// trains on. Not part of the production UI (see app/collect/page.tsx) —
-// deliberately separate from GestureTrainer.tsx, whose recordings go
-// straight into localStorage for the client-side kNN. This one instead
-// accumulates raw samples in memory across many labels/recording rounds and
-// exports them as a single JSON file, using the exact same MediaPipe
-// pipeline (WebcamLandmarks) as production inference, so the offline
-// training data matches what the model will see at inference time.
+// Dev tool for collecting the author's own labeled dataset (own_v2 — see
+// ROADMAP.md, Phase 0.2): the only data captured in the real deployment
+// condition (live webcam through the in-browser pipeline), used as the
+// deployment-condition test set alongside the multi-subject HaGRID data.
+// Not part of the production UI (see app/collect/page.tsx) — deliberately
+// separate from GestureTrainer.tsx, whose recordings go straight into
+// localStorage for the client-side kNN. This one accumulates raw samples in
+// memory across many labels/recording rounds and exports them as a single
+// JSON file, using the exact same MediaPipe pipeline (WebcamLandmarks) as
+// production inference.
+//
+// Every sample is tagged with a recording session (plus camera and
+// lighting), so evaluation can hold out whole sessions — frames from one
+// session share a background, light and camera position, and splitting them
+// across train and test would leak in the same way splitting a burst does.
 
 import React, { useCallback, useEffect, useState } from 'react';
 import WebcamLandmarks from '@/components/WebcamLandmarks';
 import { gestureEmoji } from '@/lib/gestureIcons';
-import type { HandData, Landmark, LandmarkData } from '@/lib/types';
+import type { CameraInfo, HandData, Landmark, LandmarkData } from '@/lib/types';
 
 const SAMPLES_PER_RECORDING = 20;
 const TARGET_SAMPLES_PER_CLASS = 250;
 
-// The 4 classes ml/train.py expects (see lib/rules.ts::TRAINED_GESTURE_LABELS
-// plus the no_gesture background class) — shown here so recording sessions
-// don't drift from what the model will actually be trained on.
+const SCHEMA_VERSION = 2;
+
+// Same labels as the HaGRID extraction (ml/datasets/hagrid_labels.json), so
+// a model trained on HaGRID can be evaluated on every class recorded here.
 const TARGET_CLASSES: { label: string; description: string; hardNegatives?: string[] }[] = [
   { label: 'ok_sign', description: 'Thumb + index touching in a circle, other 3 fingers up' },
   { label: 'rock_on', description: 'Index + pinky extended, thumb/middle/ring folded' },
   { label: 'call_me', description: 'Thumb + pinky extended, other 3 fingers folded' },
+  { label: 'fist', description: 'All fingers folded' },
+  { label: 'open_palm', description: 'All fingers extended, palm facing the camera' },
+  { label: 'peace', description: 'Index + middle extended in a V' },
+  { label: 'point', description: 'Index extended upward, others folded' },
+  { label: 'thumbs_up', description: 'Thumb up, other fingers folded' },
   {
     label: 'no_gesture',
     description:
-      'Relaxed hand, AND deliberately holding each of these — the model must see them as ' +
-      'negatives to learn to reject them, not just "not one of the 3 classes":',
-    hardNegatives: ['peace', 'pinch', 'fist', 'open_palm', 'point', 'thumbs_up'],
+      'Relaxed, curled or mid-transition hand — none of the classes above — plus ' +
+      'deliberately holding a pinch, which the app handles with geometry, not this model:',
+    hardNegatives: ['pinch'],
   },
 ];
 
+const LIGHTING_OPTIONS = ['daylight', 'artificial', 'dim', 'backlit'] as const;
+type Lighting = (typeof LIGHTING_OPTIONS)[number];
+
+// Session fields are optional so datasets exported before schema v2 (no
+// sessions) can still be loaded and extended.
 interface DatasetRecord {
+  schema_version?: number;
+  source?: 'own';
   label: string;
   landmarks: Landmark[];
   handedness: string;
   timestamp: number;
+  session_id?: string;
+  camera?: string;
+  resolution?: { width: number; height: number };
+  lighting?: Lighting;
+}
+
+function newSessionId(): string {
+  const date = new Date().toISOString().slice(0, 10);
+  return `${date}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
 const DatasetCollector: React.FC = () => {
@@ -46,6 +75,18 @@ const DatasetCollector: React.FC = () => {
   const [recordedCount, setRecordedCount] = useState(0);
   const [samples, setSamples] = useState<DatasetRecord[]>([]);
   const [currentHand, setCurrentHand] = useState<HandData | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [lighting, setLighting] = useState<Lighting | null>(null);
+  const [camera, setCamera] = useState<CameraInfo | null>(null);
+
+  // Generated after mount, not during render: a random id computed on the
+  // server would differ from the client's and break hydration.
+  useEffect(() => setSessionId(newSessionId()), []);
+
+  const startNewSession = () => {
+    setSessionId(newSessionId());
+    setLighting(null);
+  };
 
   const handleLandmarks = useCallback((data: LandmarkData) => {
     setCurrentHand(data.hands[0] ?? null);
@@ -56,6 +97,7 @@ const DatasetCollector: React.FC = () => {
   // appending to in-memory state instead of writing to localStorage.
   useEffect(() => {
     if (!recordingLabel || !currentHand || currentHand.landmarks.length !== 21) return;
+    if (!sessionId || !lighting || !camera) return;
 
     if (recordedCount >= SAMPLES_PER_RECORDING) {
       setRecordingLabel(null);
@@ -65,10 +107,16 @@ const DatasetCollector: React.FC = () => {
     setSamples((prev) => [
       ...prev,
       {
+        schema_version: SCHEMA_VERSION,
+        source: 'own',
         label: recordingLabel,
         landmarks: currentHand.landmarks,
         handedness: currentHand.handedness,
         timestamp: Date.now() / 1000,
+        session_id: sessionId,
+        camera: camera.label,
+        resolution: { width: camera.width, height: camera.height },
+        lighting,
       },
     ]);
     setRecordedCount((c) => c + 1);
@@ -91,12 +139,12 @@ const DatasetCollector: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'gestures_v1.json';
+    a.download = 'own_v2.json';
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  // Resume a previous export (e.g. ml/data/gestures_v1.json) so adding more
+  // Resume a previous export (e.g. ml/data/own_v2.json) so adding more
   // samples — new classes, or more of an existing one — doesn't mean
   // re-recording everything from scratch.
   const loadDataset = async (file: File) => {
@@ -107,15 +155,22 @@ const DatasetCollector: React.FC = () => {
   const counts: Record<string, number> = {};
   for (const s of samples) counts[s.label] = (counts[s.label] ?? 0) + 1;
 
+  const sessionCounts: Record<string, number> = {};
+  for (const s of samples) {
+    const id = s.session_id ?? 'no session (pre-v2)';
+    sessionCounts[id] = (sessionCounts[id] ?? 0) + 1;
+  }
+
   const progress = recordingLabel ? recordedCount / SAMPLES_PER_RECORDING : 0;
+  const canRecord = Boolean(currentHand && labelInput.trim() && sessionId && lighting && camera);
 
   return (
     <main className="min-h-screen bg-ak-bg text-ak-text p-6 flex flex-col gap-6 max-w-2xl mx-auto">
       <div>
         <h1 className="text-lg font-semibold">Dataset collector (dev tool)</h1>
         <p className="text-sm text-ak-muted mt-1">
-          Train the 4 classes below, then save the export to{' '}
-          <code>ml/data/gestures_v1.json</code>.
+          Record the 9 classes below over several sessions, then save the export to{' '}
+          <code>ml/data/own_v2.json</code>.
         </p>
         <label className="inline-block mt-2 text-xs text-ak-accent hover:underline cursor-pointer">
           Load an existing dataset to add more samples on top
@@ -130,6 +185,50 @@ const DatasetCollector: React.FC = () => {
             }}
           />
         </label>
+      </div>
+
+      {/* Recording session — every sample is tagged with it. */}
+      <div className="flex flex-col gap-2 rounded-lg border border-ak-border bg-ak-panel/40 px-4 py-3 text-sm">
+        <div className="flex items-center justify-between gap-2">
+          <span>
+            Session <code className="text-ak-accent">{sessionId ?? '…'}</code>
+          </span>
+          <button
+            onClick={startNewSession}
+            disabled={recordingLabel !== null}
+            className="text-xs text-ak-accent hover:underline disabled:opacity-50"
+          >
+            New session
+          </button>
+        </div>
+        <label className="flex items-center gap-2">
+          <span className="text-ak-muted">Lighting</span>
+          <select
+            value={lighting ?? ''}
+            onChange={(e) => setLighting((e.target.value || null) as Lighting | null)}
+            disabled={recordingLabel !== null}
+            className="bg-transparent border border-ak-border rounded-md px-2 py-1 text-sm disabled:opacity-50"
+          >
+            <option value="">choose…</option>
+            {LIGHTING_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className="text-ak-muted">
+          Camera:{' '}
+          {camera ? `${camera.label} · ${camera.width}×${camera.height}` : 'waiting for webcam…'}
+        </span>
+        {Object.keys(sessionCounts).length > 0 && (
+          <span className="text-xs text-ak-subtle">
+            {Object.keys(sessionCounts).length} session(s) in dataset:{' '}
+            {Object.entries(sessionCounts)
+              .map(([id, count]) => `${id} (${count})`)
+              .join(', ')}
+          </span>
+        )}
       </div>
 
       {/* Target classes — click one to fill the label input below. */}
@@ -174,31 +273,27 @@ const DatasetCollector: React.FC = () => {
 
       {/* How-to, kept short — the counters above are the real feedback loop. */}
       <ol className="text-xs text-ak-muted list-decimal list-inside flex flex-col gap-1 bg-ak-panel/40 border border-ak-border rounded-lg px-4 py-3">
+        <li>
+          One session = one sitting (same day, place and light). Aim for 5+ sessions on
+          different days and lighting; start a <strong>New session</strong> each time and set its
+          lighting before recording.
+        </li>
         <li>Click a class above to fill its label, then hit Record and hold the pose.</li>
-        <li>Each Record captures ~1s (20 frames) — repeat 10-15x per class, not once.</li>
+        <li>Each Record captures ~1s (20 frames) — repeat a few times per class per session.</li>
         <li>
           Between recordings, change distance, rotation, hand position in frame, and
           which hand — a single long hold gives near-identical frames.
         </li>
         <li>
-          <code>no_gesture</code> needs the most variety: open/relaxed/curled hand, mid-transition
-          poses, different distances — this is what stops false triggers at rest — plus explicitly
-          holding{' '}
-          <span className="inline-flex items-center gap-1 text-sm align-middle">
-            {['peace', 'pinch', 'fist', 'open_palm', 'point', 'thumbs_up'].map((g) => (
-              <span key={g} title={g}>
-                {gestureEmoji(g)}
-              </span>
-            ))}
-          </span>{' '}
-          <strong className="text-ak-amber">each in turn</strong>, since the trained classes will
-          otherwise confidently misfire on those (no rejection without seeing them as negatives).
+          <code>no_gesture</code> needs the most variety: relaxed/curled hand, mid-transition
+          poses, different distances — this is what stops false triggers at rest — plus a{' '}
+          {gestureEmoji('pinch')} pinch, which must not be confused with any class.
         </li>
         <li>Download the dataset once every class shows ~250+ samples.</li>
       </ol>
 
       <div className="rounded-lg overflow-hidden border border-ak-border">
-        <WebcamLandmarks onLandmarks={handleLandmarks} />
+        <WebcamLandmarks onLandmarks={handleLandmarks} onCameraInfo={setCamera} />
       </div>
 
       <div className="flex gap-2">
@@ -212,7 +307,7 @@ const DatasetCollector: React.FC = () => {
         />
         <button
           onClick={startRecording}
-          disabled={!currentHand || !labelInput.trim() || recordingLabel !== null}
+          disabled={!canRecord || recordingLabel !== null}
           className="px-4 py-1.5 rounded-md text-sm font-medium bg-ak-line text-ak-bg disabled:opacity-40"
         >
           Record
@@ -224,6 +319,7 @@ const DatasetCollector: React.FC = () => {
           &ldquo;{recordingLabel}&rdquo; — {recordedCount}/{SAMPLES_PER_RECORDING} ({Math.round(progress * 100)}%)
         </p>
       )}
+      {!lighting && <p className="text-xs text-ak-amber">Set this session&apos;s lighting to record.</p>}
       {!currentHand && <p className="text-xs text-ak-amber">Show a hand to the camera to record.</p>}
 
       {Object.keys(counts).length > 0 && (
