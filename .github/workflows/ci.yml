@@ -29,6 +29,9 @@ jobs:
     - name: Run ruff format check
       run: uv run ruff format --check .
 
+    - name: Run tests
+      run: uv run pytest
+
   frontend-lint:
     runs-on: ubuntu-latest
     
