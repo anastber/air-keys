@@ -66,7 +66,7 @@ This makes three evaluation protocols possible, each answering a different quest
 Known limitation, stated up front: HaGRID consists of still photos, not video, so it cannot evaluate temporal behavior (Phase 1) and does not contain motion gestures (Phase 2).
 
 ### 0.1 Landmark extraction from HaGRID
-- Restrict to the relevant classes, and start from the downsampled release to keep storage reasonable.
+- Restrict to the relevant classes and extract a **subject-stratified sample** within HaGRID's official subject-disjoint train/val/test split. The archives are ~40 GB per class, so sampled images are read straight out of the remote zips (HTTP range requests) and never stored — only landmarks are kept.
 - **Re-extract landmarks with MediaPipe Python, using the same `.task` model as the frontend**, rather than using HaGRID's provided landmarks (2D only, no `z`, different extraction settings). This keeps train/serve preprocessing identical.
 - Log and analyze extraction failures (no hand detected, wrong hand selected in multi-hand images): failure rate per class is itself a finding, and silently dropping failures would bias the dataset.
 - Map HaGRID labels to project labels (`ok` → `ok_sign`, `rock` → `rock_on`, `call` → `call_me`) in one explicit, versioned mapping file.

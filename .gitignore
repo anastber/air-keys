@@ -299,7 +299,9 @@ Desktop.ini
 # size); the exported MLP weights JSON and confusion matrix ARE committed —
 # see ml/train.py — as the evidence + deployable artifact for the
 # self-trained classifier (frontend/scripts/setup-mediapipe.mjs copies the
-# weights into the gitignored public/ dir on install).
-ml/data/*.jsonl
-ml/data/*.json
+# weights into the gitignored public/ dir on install). Everything under
+# ml/data/ (own recordings, extracted public-dataset landmarks, cached
+# models) stays local.
+ml/data/*
+!ml/data/.gitkeep
 ml/experiments/*.joblib

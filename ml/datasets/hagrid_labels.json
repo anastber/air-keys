@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "description": "HaGRID classes extracted by ml/datasets/hagrid.py, with the project label each one maps to and the archive its images live in. Bump `version` on any change: it is recorded in every extraction manifest.",
+  "classes": {
+    "ok": {
+      "label": "ok_sign",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/ok.zip"
+    },
+    "rock": {
+      "label": "rock_on",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/rock.zip"
+    },
+    "call": {
+      "label": "call_me",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/call.zip"
+    },
+    "fist": {
+      "label": "fist",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/fist.zip"
+    },
+    "palm": {
+      "label": "open_palm",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/palm.zip"
+    },
+    "peace": {
+      "label": "peace",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/peace.zip"
+    },
+    "one": {
+      "label": "point",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/one.zip"
+    },
+    "like": {
+      "label": "thumbs_up",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/like.zip"
+    },
+    "no_gesture": {
+      "label": "no_gesture",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/no_gesture.zip"
+    }
+  }
+}
