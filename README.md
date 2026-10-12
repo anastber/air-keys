@@ -58,6 +58,15 @@ Believable, not suspicious: these are 4 visually distinct static poses from one 
 
 **Reproducing it**: `uv run python -m ml.train` (needs `ml/data/gestures_v1.json`, collected via `/collect`). The exported weights JSON and confusion matrix are committed to git as evidence + the deployable artifact; the raw dataset and full sklearn pickle aren't (privacy + size) — see `.gitignore`. `frontend/scripts/setup-mediapipe.mjs` copies the committed weights into the gitignored `public/` dir on every install.
 
+## Datasets
+
+The next stage of the ML work ([ROADMAP.md](ROADMAP.md)) evaluates models on people they were never trained on, using two landmark datasets, documented in the [datasheet](docs/datasheet.md):
+
+- **`hagrid_landmarks_v1`** — 12,485 hands from 9,034 distinct people, extracted from [HaGRID](https://github.com/hukenovs/hagrid) with the app's own MediaPipe model (`uv run python -m ml.datasets.hagrid`). Images are read straight out of HaGRID's remote archives and never stored; only landmarks are kept.
+- **`own_v2`** — the author's own recordings through `/collect`, tagged by session, camera and lighting: the only data captured in real webcam conditions.
+
+Every dataset is checked before use (`make validate DATA=<file>`): schema, subject leakage across splits, class balance, duplicates and landmark quality, with the file's SHA-256 identifying the exact version. Neither dataset is committed to git.
+
 ## Features
 
 - **Real-time hand tracking** — MediaPipe, both hands, fully client-side
@@ -86,11 +95,13 @@ Believable, not suspicious: these are 4 visually distinct static poses from one 
 - **NumPy** - landmark normalization
 - **matplotlib** - confusion matrix plot
 - **joblib** - model persistence (reproducibility; not the deployed artifact — see above)
+- **MediaPipe (Python)** + **remotezip** - landmark extraction from HaGRID, offline only
+- **pytest** - tests for the data pipeline
 
 ### Tooling
 
 - **uv** - Python package management
-- **GitHub Actions** - lint CI (ruff + ESLint)
+- **GitHub Actions** - CI on every pull request (ruff, pytest, ESLint)
 
 ## Quick Start
 
@@ -161,3 +172,5 @@ make test   # pytest
 ## License
 
 MIT License - see LICENSE file for details.
+
+The HaGRID dataset used for training and evaluation ([Kapitanov et al.](https://arxiv.org/abs/2206.08219), [repository](https://github.com/hukenovs/hagrid)) is distributed under its own [license](https://github.com/hukenovs/hagrid/blob/master/license/en_us.pdf), a variant of CC BY-SA 4.0; it is not redistributed here.

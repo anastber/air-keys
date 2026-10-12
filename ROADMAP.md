@@ -83,11 +83,15 @@ Known limitation, stated up front: HaGRID consists of still photos, not video, s
 - [ ] Collect **hard negatives** explicitly: transitions between poses, half-formed poses, hands at rest, hands holding objects.
 
 ### 0.3 Dataset versioning and validation
-- [ ] Datasets are immutable files named by version + SHA-256 hash, recorded in each experiment report. Raw data stays out of git (as today).
-- [ ] A validation script checks schema, class balance per split, missing landmarks, and duplicated bursts.
-- [ ] Credit HaGRID (authors, link, license) in the README and the datasheet
-- [ ] A **datasheet** documents both datasets: sources, label mapping, extraction pipeline, known biases (e.g. HaGRID's demographic and camera distribution).
-- [ ] Exploratory analysis notebook: per-class distributions, PCA/UMAP of features colored by dataset — a visible gap between HaGRID and own-webcam clusters quantifies the domain shift that P3 measures.
+- [x] Datasets are immutable files, identified by the SHA-256 of their content (computed by the validation report). Raw data stays out of git (as today).
+- [ ] Record the dataset SHA-256 in each experiment report (with the 0.4 harness).
+- [x] A validation script checks schema, subject leakage across splits, class balance per split, duplicates and landmark quality (`make validate DATA=<file>`, `ml/validation.py`).
+- [x] Deduplicate before any experiment (`ml.data.load_dataset`): HaGRID files a few identical scenes under different `user_id`s, some across splits — exact copies and cross-split near-duplicates are removed from val/test.
+- [x] Credit HaGRID (authors, link, license) in the README and the datasheet
+- [x] A **datasheet** documents both datasets: sources, label mapping, extraction pipeline, known biases (e.g. HaGRID's demographic and camera distribution) — `docs/datasheet.md`; the `own_v2` statistics are added once its sessions are recorded.
+- [ ] Exploratory analysis notebook: per-class distributions, PCA/UMAP of features colored by dataset — a visible gap between HaGRID and own-webcam clusters quantifies the domain shift that P3 measures. *(waits for `own_v2`)*
+
+> **Status — `hagrid_landmarks_v1` validated.** No errors. 10 duplicates removed (all from val/test), leaving 12,485 records from 9,034 subjects. Warnings kept for experiments to handle: 77 records (0.6 %) with likely landmark errors, fewer `no_gesture` samples. Demographics skew strongly White (75.8 %) and young (< 40: 84.5 %), to be checked per group in evaluation.
 
 ### 0.4 Evaluation harness
 - [x] Refactor `ml/train.py` into `ml/data.py` (loading, grouping, splits) and `ml/evaluate.py` (metrics, reports) *(#3)*
