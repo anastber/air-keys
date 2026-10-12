@@ -63,7 +63,7 @@ MediaPipe's pretrained recognizer and the client-side kNN cover 5+N poses withou
 The next stage of the ML work ([ROADMAP.md](ROADMAP.md)) evaluates models on people they were never trained on, using two landmark datasets, documented in the [datasheet](docs/datasheet.md):
 
 - **`hagrid_landmarks_v1`** — 12,485 hands from 9,034 distinct people, extracted from [HaGRID](https://github.com/hukenovs/hagrid) with the app's own MediaPipe model (`uv run python -m ml.datasets.hagrid`). Images are read straight out of HaGRID's remote archives and never stored; only landmarks are kept.
-- **`own_v2`** — the author's own recordings through `/collect`, tagged by session, camera and lighting: the only data captured in real webcam conditions.
+- **`own_v2`** — the author's own recordings through `/collect`, tagged by session, camera and lighting: the only data captured in real webcam conditions, used as a test set only.
 
 Every dataset is checked before use (`make validate DATA=<file>`): schema, subject leakage across splits, class balance, duplicates and landmark quality, with the file's SHA-256 identifying the exact version. Neither dataset is committed to git.
 

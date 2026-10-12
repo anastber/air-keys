@@ -38,8 +38,9 @@ LIGHTING = {"daylight", "artificial", "dim", "backlit"}
 HAGRID_SPLITS = {"train", "val", "test"}
 NUM_LANDMARKS = 21
 
-# Planned minimum for own recordings (ROADMAP.md, Phase 0.2).
-MIN_OWN_SESSIONS = 5
+# Planned number of own recording sessions (ROADMAP.md, Phase 0.2): own_v2
+# is a test set only, recorded in the real playing conditions.
+MIN_OWN_SESSIONS = 2
 # Within a split (HaGRID) or the whole dataset (own), a class with fewer
 # than this fraction of the largest class's samples is flagged.
 MIN_CLASS_RATIO = 0.5
@@ -243,7 +244,7 @@ def _validate_own(records: list[dict[str, Any]], report: Report) -> None:
     if len(sessions) < MIN_OWN_SESSIONS:
         report.warnings.append(
             f"own: {len(sessions)} session(s), fewer than the {MIN_OWN_SESSIONS} "
-            "planned for session-disjoint evaluation"
+            "planned"
         )
 
     # Balance over the whole dataset, then per-session class coverage.

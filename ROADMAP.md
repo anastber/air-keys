@@ -55,7 +55,7 @@ The project's own recordings are kept, with a different role: they are the only 
 | Dataset | Source | Subjects | Role |
 |---|---|---|---|
 | `hagrid_landmarks` | HaGRID images → MediaPipe | Many, subject-disjoint splits | Training + **multi-subject test** |
-| `own_v2` | `/collect`, author only, multiple sessions | 1 | Fine-tuning + **deployment-condition test** |
+| `own_v2` | `/collect`, author only, 2 sessions | 1 | **Deployment-condition test** only — never trained on |
 
 This makes three evaluation protocols possible, each answering a different question:
 
@@ -63,7 +63,7 @@ This makes three evaluation protocols possible, each answering a different quest
 |---|---|---|
 | **P1 — in-domain** | HaGRID train subjects → HaGRID test subjects | Does the model generalize to unseen people? |
 | **P2 — cross-dataset** | Own data → HaGRID test subjects | Does a model trained on one hand generalize to thousands? (the honest test of the current MLP) |
-| **P3 — deployment shift** | HaGRID (± own train sessions) → own held-out sessions | Does a model learned from photos work on live webcam video? |
+| **P3 — deployment shift** | HaGRID → own recordings | Does a model learned from photos work on live webcam video? |
 
 Known limitation, stated up front: HaGRID consists of still photos, not video, so it cannot evaluate temporal behavior (Phase 1) and does not contain motion gestures (Phase 2).
 
@@ -79,8 +79,12 @@ Known limitation, stated up front: HaGRID consists of still photos, not video, s
 
 ### 0.2 Own-data protocol (`own_v2`)
 - [x] Extend the `/collect` record schema with `session_id`, camera / resolution, and a lighting tag.
-- [ ] Record **≥ 5 sessions** on different days, lighting conditions, distances and both hands; hold out whole sessions for testing.
-- [ ] Collect **hard negatives** explicitly: transitions between poses, half-formed poses, hands at rest, hands holding objects.
+- [ ] Record **2 sessions** in the conditions the app is actually played in (own room, own webcam, usual distance), both hands.
+- [ ] Collect **hard negatives** explicitly: half-formed poses, hands at rest, hands holding objects, pinches.
+
+> **Why only 2 sessions.** `own_v2` is a test set only: HaGRID already brings far more variety in people, rooms, light and cameras than a few extra sessions could, so the author's hands add little as *training* data. What HaGRID cannot provide is the deployment condition itself — live webcam video, MediaPipe in VIDEO mode, the author's real setup — and that is what `own_v2` measures. Since it is never trained on, train/test separation is guaranteed by construction; representative conditions matter more than artificially varied ones. Fine-tuning on own data may come back later as an optional experiment, with more sessions.
+>
+> Transitions between gestures — the main source of wrong notes when playing, absent from both HaGRID and held poses — are recorded in Phase 1 as continuous sessions.
 
 ### 0.3 Dataset versioning and validation
 - [x] Datasets are immutable files, identified by the SHA-256 of their content (computed by the validation report). Raw data stays out of git (as today).

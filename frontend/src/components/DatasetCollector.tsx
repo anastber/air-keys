@@ -274,9 +274,9 @@ const DatasetCollector: React.FC = () => {
       {/* How-to, kept short — the counters above are the real feedback loop. */}
       <ol className="text-xs text-ak-muted list-decimal list-inside flex flex-col gap-1 bg-ak-panel/40 border border-ak-border rounded-lg px-4 py-3">
         <li>
-          One session = one sitting (same day, place and light). Aim for 5+ sessions on
-          different days and lighting; start a <strong>New session</strong> each time and set its
-          lighting before recording.
+          One session = one sitting (same day, place and light). Record 2 sessions, in the
+          conditions you actually play in; start a <strong>New session</strong> each time and set
+          its lighting before recording.
         </li>
         <li>Click a class above to fill its label, then hit Record and hold the pose.</li>
         <li>Each Record captures ~1s (20 frames) — repeat a few times per class per session.</li>
