@@ -33,7 +33,7 @@ These rules are the "ML process" of the project. A phase is not done until its d
 4. **Test set is touched once.** Model selection and hyperparameter search happen with grouped cross-validation on the training subjects. The held-out test subjects — and the own-webcam test sessions — are evaluated only at the end of a phase.
 5. **Report uncertainty.** Metrics are reported as mean ± std across grouped CV folds, with bootstrap 95 % CIs (resampling subjects, not samples) on the test set — never as a single number.
 6. **Metrics beyond accuracy.** Macro-F1, per-class recall, confusion matrix, calibration (ECE), and — because this is an instrument — **latency** and **false triggers per minute**.
-7. **Reproducibility.** Fixed seeds, versioned datasets with a content hash, a config file per experiment, and one command to rerun it. Each experiment writes a short report to `ml/experiments/<id>/`.
+7. **Reproducibility.** Fixed seeds, versioned datasets with a content hash, the full configuration recorded in each report, and one command to rerun it. Each experiment writes a short report to `ml/experiments/<id>/`.
 8. **Train/serve parity.** Preprocessing is implemented in both Python and TypeScript; a parity test on shared fixtures guarantees they produce identical features.
 9. **Error analysis is a deliverable.** Each phase ends with a written look at failure cases, not only aggregate scores.
 10. **Model cards.** Every deployed model ships with a card: intended use, training data, evaluation protocol, known failure modes.
@@ -88,7 +88,7 @@ Known limitation, stated up front: HaGRID consists of still photos, not video, s
 
 ### 0.3 Dataset versioning and validation
 - [x] Datasets are immutable files, identified by the SHA-256 of their content (computed by the validation report). Raw data stays out of git (as today).
-- [ ] Record the dataset SHA-256 in each experiment report (with the 0.4 harness).
+- [x] Record the dataset SHA-256 in each experiment report (with the 0.4 harness).
 - [x] A validation script checks schema, subject leakage across splits, class balance per split, duplicates and landmark quality (`make validate DATA=<file>`, `ml/validation.py`).
 - [x] Deduplicate before any experiment (`ml.data.load_dataset`): HaGRID files a few identical scenes under different `user_id`s, some across splits — exact copies and cross-split near-duplicates are removed from val/test.
 - [x] Credit HaGRID (authors, link, license) in the README and the datasheet
@@ -99,9 +99,9 @@ Known limitation, stated up front: HaGRID consists of still photos, not video, s
 
 ### 0.4 Evaluation harness
 - [x] Refactor `ml/train.py` into `ml/data.py` (loading, grouping, splits) and `ml/evaluate.py` (metrics, reports) *(#3)*
-- [ ] Move model-specific training into their own modules as models are added
-- [ ] Implement subject-disjoint grouped CV for HaGRID, session-disjoint splits for own data, and protocols P1–P3.
-- [ ] Single entry point: `make eval MODEL=mlp PROTOCOL=p1` → writes metrics JSON, confusion matrices, and a markdown report.
+- [x] Candidate models in one registry (`ml/models.py`: logistic regression, kNN, random forest, MLP), plus the deployed MLP reloaded from its exported weights and run exactly as the frontend does (same forward pass, threshold and background class — tested against sklearn)
+- [x] Protocols P1–P3 (`ml/protocols.py`) and grouped 5-fold CV on HaGRID training subjects for model selection. HaGRID's val split is reserved for Phase 1 calibration. `own_v2` is test-only, so P3 needs no own-data split; its CIs resample recording bursts.
+- [x] Single entry point: `make eval PROTOCOL=p1 MODEL=mlp` → validates the datasets, then writes `metrics.json`, `report.md` and a confusion matrix to `ml/experiments/<date>-<protocol>-<model>/`, with bootstrap 95 % CIs over subjects, per-class metrics, git commit and the command that reproduces the run.
 - [ ] Add Python ↔ TypeScript **feature parity test** on fixture landmarks (`ml/features.py` vs `lib/customGestures.ts::normalizeLandmarks`).
 
 ### 0.5 Re-baseline existing models
@@ -163,6 +163,7 @@ HaGRID has no motion, so multi-subject data comes from public dynamic-gesture da
 - [ ] **Augmentation:** time warping, speed scaling, small rotations / scalings, Gaussian jitter, random cropping of the window. Each augmentation evaluated by ablation, not assumed to help.
 
 ### Models (in order of complexity)
+- [ ] **Baseline 0 — static pose + trajectory rules,** as in HaGRID's own [dynamic gestures](https://github.com/ai-forever/dynamic_gestures) work ([HaGRIDv2 paper](https://arxiv.org/abs/2412.01508)): a dynamic gesture is a start pose, a movement and an end pose, recognized by a state machine over the Phase 0 static classifier's predictions and the hand's trajectory. Needs no video training data at all; MediaPipe already provides the hand position and tracking. The learned models below — and the public video datasets they need — only matter if they beat it. Unlike the original, its thresholds are tuned and evaluated on data rather than set by hand.
 - [ ] **DTW + kNN** — strong, interpretable baseline for few-sample motion recognition.
 - [ ] **Hand-crafted temporal features** (velocities, displacement, trajectory curvature) + gradient boosting.
 - [ ] **1D temporal CNN** on landmark windows.
@@ -279,20 +280,21 @@ Phase 0 (evaluation foundations)
 
 ---
 
-## Planned repository layout
+## Repository layout
 
 ```
 ml/
-  data.py            # loading, validation, grouping, splits (burst / session / subject)
+  data.py            # loading, deduplication, grouping, splits
+  validation.py      # dataset checks (make validate)
   datasets/          # public-dataset adapters: HaGRID extraction, label mappings
-  protocols.py       # evaluation protocols P1–P3
   features.py        # normalization (parity-tested against the TS implementation)
-  evaluate.py        # metrics, CIs, reports, confusion matrices
-  models/            # one module per model family
-  configs/           # one config per experiment
+  models.py          # candidate models + the deployed MLP
+  protocols.py       # evaluation protocols P1–P3, CV
+  evaluate.py        # metrics, bootstrap CIs, confusion matrices
+  eval.py            # evaluation entry point (make eval)
   experiments/<id>/  # report.md, metrics.json, plots — committed
-  notebooks/         # EDA and error analysis
-  model_cards/       # one card per deployed model
+  notebooks/         # EDA and error analysis (planned)
+  model_cards/       # one card per deployed model (planned)
 docs/
   datasheet.md       # hagrid_landmarks + own_v2
 ```

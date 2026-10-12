@@ -1,4 +1,4 @@
-.PHONY: install dev lint test validate clean help
+.PHONY: install dev lint test validate eval clean help
 .DEFAULT_GOAL := help
 
 # Variables
@@ -42,6 +42,9 @@ test: ## Run Python tests
 
 validate: ## Validate a dataset (usage: make validate DATA=ml/data/own_v2.json)
 	. .venv/bin/activate && python -m ml.validation $(DATA)
+
+eval: ## Evaluate a model (usage: make eval PROTOCOL=p1 MODEL=mlp)
+	. .venv/bin/activate && python -m ml.eval --protocol $(PROTOCOL) --model $(MODEL)
 
 format: ## Format all code (Python + Node.js)
 	@echo "Formatting Python code with ruff..."
