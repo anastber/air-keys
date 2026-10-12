@@ -1,6 +1,6 @@
 import numpy as np
 
-from ml.train import assign_recording_bursts, group_stratified_split
+from ml.data import assign_recording_bursts, group_stratified_split
 
 
 def record(label: str, timestamp: float) -> dict:

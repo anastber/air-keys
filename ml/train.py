@@ -6,10 +6,9 @@ Trains two models on the same normalized features for comparison:
     matrices export directly to a hand-rolled JS forward pass (no ONNX/
     TF.js runtime needed client-side).
 
-Input:  ml/data/gestures_v1.json — a JSON array of
-        {"label": str, "landmarks": [{"x","y","z"} x 21],
-         "handedness": str, "timestamp": float}
-        exported by frontend/src/components/DatasetCollector.tsx.
+Input:  ml/data/gestures_v1.json, exported by
+        frontend/src/components/DatasetCollector.tsx (record format and
+        burst-grouped splitting: see ml/data.py).
 
 Output (ml/experiments/):
   - confusion_matrix.png     confusion matrix plot for the deployed MLP
@@ -26,16 +25,16 @@ import shutil
 from pathlib import Path
 
 import joblib
-import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import (
-    ConfusionMatrixDisplay,
-    accuracy_score,
-    classification_report,
-)
 from sklearn.neural_network import MLPClassifier
 
-from ml.features import normalize_landmarks
+from ml.data import (
+    assign_recording_bursts,
+    featurize,
+    group_stratified_split,
+    load_records,
+)
+from ml.evaluate import evaluate, save_confusion_matrix
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_PATH = REPO_ROOT / "ml" / "data" / "gestures_v1.json"
@@ -44,76 +43,6 @@ FRONTEND_MODELS_DIR = REPO_ROOT / "frontend" / "public" / "models"
 
 CONFIDENCE_THRESHOLD = 0.6
 RANDOM_STATE = 42
-
-# DatasetCollector.tsx captures ~20 near-identical frames per Record click
-# (one "recording burst"). A plain random train/test split would scatter
-# frames from the same burst across both sides, so the model would partly
-# be tested on near-duplicates of its own training data — inflating
-# accuracy without proving generalization. Instead we group samples by
-# burst (same label, no >2s gap from the previous sample) and split whole
-# bursts between train/test, never splitting one burst across both.
-BURST_GAP_SECONDS = 2.0
-
-
-def load_records(path: Path) -> list[dict]:
-    return json.loads(path.read_text())
-
-
-def featurize(records: list[dict]) -> tuple[np.ndarray, np.ndarray]:
-    features = np.array(
-        [normalize_landmarks(r["landmarks"], r["handedness"]) for r in records],
-        dtype=np.float32,
-    )
-    labels = np.array([r["label"] for r in records])
-    return features, labels
-
-
-def assign_recording_bursts(records: list[dict]) -> np.ndarray:
-    groups = np.empty(len(records), dtype=np.int64)
-    group_id = -1
-    prev_label = None
-    prev_ts = None
-    for i, r in enumerate(records):
-        if (
-            prev_ts is None
-            or r["label"] != prev_label
-            or r["timestamp"] - prev_ts > BURST_GAP_SECONDS
-        ):
-            group_id += 1
-        groups[i] = group_id
-        prev_label = r["label"]
-        prev_ts = r["timestamp"]
-    return groups
-
-
-def group_stratified_split(
-    x: np.ndarray,
-    y: np.ndarray,
-    groups: np.ndarray,
-    test_size: float,
-    random_state: int,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    rng = np.random.RandomState(random_state)
-    train_idx: list[int] = []
-    test_idx: list[int] = []
-    for label in sorted(set(y)):
-        label_indices = np.where(y == label)[0]
-        label_groups = groups[label_indices]
-        unique_groups = np.unique(label_groups)
-        rng.shuffle(unique_groups)
-        n_test_groups = max(1, round(len(unique_groups) * test_size))
-        test_groups = set(unique_groups[:n_test_groups])
-        for idx, g in zip(label_indices, label_groups, strict=True):
-            (test_idx if g in test_groups else train_idx).append(idx)
-    return x[train_idx], x[test_idx], y[train_idx], y[test_idx]
-
-
-def evaluate(name: str, model, x_test: np.ndarray, y_test: np.ndarray) -> None:
-    preds = model.predict(x_test)
-    accuracy = accuracy_score(y_test, preds)
-    print(f"\n=== {name} ===")
-    print(f"Held-out accuracy: {accuracy:.3f}")
-    print(classification_report(y_test, preds, zero_division=0))
 
 
 def export_mlp_weights(
@@ -163,12 +92,8 @@ def main() -> None:
     mlp.fit(x_train, y_train)
     evaluate("MLP (deployed model)", mlp, x_test, y_test)
 
-    ConfusionMatrixDisplay.from_estimator(mlp, x_test, y_test, xticks_rotation=45)
     cm_path = EXPERIMENTS_DIR / "confusion_matrix.png"
-    import matplotlib.pyplot as plt
-
-    plt.tight_layout()
-    plt.savefig(cm_path)
+    save_confusion_matrix(mlp, x_test, y_test, cm_path)
     print(f"\nSaved confusion matrix to {cm_path}")
 
     # Refit the deployed model on all data before export/deployment.
