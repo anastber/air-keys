@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "node scripts/setup-mediapipe.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "bench": "vitest bench --run"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",

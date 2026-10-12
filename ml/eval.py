@@ -29,13 +29,15 @@ from ml.data import dataset_sha256, featurize, load_records
 from ml.evaluate import bootstrap_ci, compute_metrics, plot_confusion_matrix
 from ml.models import available_models, build_model
 from ml.protocols import HAGRID_PATH, OWN_PATH, PROTOCOLS, build_protocol
-from ml.validation import Report, validate
+from ml.validation import Report, hagrid_attributes, validate
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXPERIMENTS_DIR = REPO_ROOT / "ml" / "experiments"
 CV_FOLDS = 5
 N_BOOT = 1000
 SEED = 0
+# Groups smaller than this are reported but flagged: their accuracy is noisy.
+MIN_GROUP_SIZE = 100
 
 
 def load_validated(path: Path) -> tuple[list[dict], dict[str, Any]]:
@@ -132,6 +134,12 @@ def run_holdout(data, model_name: str) -> tuple[dict[str, Any], np.ndarray, np.n
         hand: float((y_pred[handedness == hand] == y_test[handedness == hand]).mean())
         for hand in sorted(set(handedness))
     }
+    if all(r.get("source") == "hagrid" for r in data.test):
+        attributes = hagrid_attributes(data.test)
+        if attributes:
+            metrics["accuracy_by_group"] = accuracy_by_group(
+                data.test, y_test, y_pred, attributes
+            )
     result = {
         "metrics": metrics,
         "n_train": len(data.train) if data.train is not None else 0,
@@ -146,6 +154,24 @@ def run_holdout(data, model_name: str) -> tuple[dict[str, Any], np.ndarray, np.n
         "model_params": model_params(model),
     }
     return result, y_test, y_pred
+
+
+def accuracy_by_group(
+    test: list[dict], y_test: np.ndarray, y_pred: np.ndarray, attributes: dict
+) -> dict[str, dict[str, dict[str, float]]]:
+    """Accuracy per demographic group (HaGRID meta: gender, race, age)."""
+    correct = y_test == y_pred
+    out: dict[str, dict[str, dict[str, float]]] = {}
+    for key in ("gender", "race", "age"):
+        values = np.array([attributes[r["image_id"]][key] for r in test])
+        out[key] = {
+            value: {
+                "accuracy": float(correct[values == value].mean()),
+                "n": int((values == value).sum()),
+            }
+            for value in sorted(set(values))
+        }
+    return out
 
 
 def write_report(out_dir: Path, result: dict[str, Any]) -> None:
@@ -219,9 +245,25 @@ def write_report(out_dir: Path, result: dict[str, Any]) -> None:
         by_hand = ", ".join(
             f"{hand}: {acc:.3f}" for hand, acc in m["accuracy_by_handedness"].items()
         )
+        lines += ["", f"Accuracy by handedness — {by_hand}."]
+        if "accuracy_by_group" in m:
+            lines += [
+                "",
+                "### By demographic group",
+                "",
+                "HaGRID meta, automatically estimated (FairFace / MiVOLO), so "
+                f"approximate. Groups under {MIN_GROUP_SIZE} samples are marked *.",
+                "",
+                "| Attribute | Group | Accuracy | n |",
+                "|---|---|---:|---:|",
+            ]
+            for key, groups in m["accuracy_by_group"].items():
+                for value, g in groups.items():
+                    star = "*" if g["n"] < MIN_GROUP_SIZE else ""
+                    lines.append(
+                        f"| {key} | {value}{star} | {g['accuracy']:.3f} | {g['n']} |"
+                    )
         lines += [
-            "",
-            f"Accuracy by handedness — {by_hand}.",
             "",
             "![Confusion matrix](confusion_matrix.png)",
             "",
