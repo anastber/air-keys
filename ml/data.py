@@ -14,6 +14,7 @@ HaGRID records (ml/datasets/hagrid.py) add "source": "hagrid", "user_id"
 and HaGRID's official "split" instead.
 """
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -32,7 +33,67 @@ BURST_GAP_SECONDS = 2.0
 
 
 def load_records(path: Path) -> list[dict]:
+    """A JSON array (own recordings) or JSON Lines (extracted datasets)."""
+    if path.suffix == ".jsonl":
+        with path.open() as f:
+            return [json.loads(line) for line in f if line.strip()]
     return json.loads(path.read_text())
+
+
+def dataset_sha256(path: Path) -> str:
+    """Content hash identifying a dataset version in validation and experiment reports."""
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+# Two samples closer than this in normalized feature space are treated as
+# the same photo. On hagrid_landmarks_v1, nearest-neighbor distances have a
+# median of ~0.52 and a 1st percentile of ~0.25; the handful of pairs below
+# 0.05 are exact copies or the same scene filed under two HaGRID user_ids.
+NEAR_DUPLICATE_DISTANCE = 0.05
+SPLIT_ORDER = {"train": 0, "val": 1, "test": 2}
+
+
+def duplicates_to_drop(
+    records: list[dict], max_distance: float = NEAR_DUPLICATE_DISTANCE
+) -> set[int]:
+    """Indices of duplicated samples to remove before any experiment.
+
+    - Exact landmark copies: every copy after the first is dropped.
+    - Records with a "split" field (HaGRID): near-duplicates (feature
+      distance < max_distance) in *different* splits are leakage, since
+      HaGRID files a few identical scenes under different user_ids. The
+      copy in the later split (train < val < test) is dropped, so the
+      evaluation sets never contain a near-copy of a training sample.
+    """
+    from scipy.spatial import cKDTree
+
+    drop: set[int] = set()
+    seen: dict[tuple, int] = {}
+    for i, record in enumerate(records):
+        key = tuple((p["x"], p["y"], p["z"]) for p in record["landmarks"])
+        if key in seen:
+            drop.add(i)
+        else:
+            seen[key] = i
+
+    if all("split" in r for r in records):
+        x, _ = featurize(records)
+        for i, j in cKDTree(x).query_pairs(r=max_distance):
+            if records[i]["split"] != records[j]["split"]:
+                later = max(i, j, key=lambda k: SPLIT_ORDER[records[k]["split"]])
+                drop.add(later)
+    return drop
+
+
+def load_dataset(path: Path) -> list[dict]:
+    """Records as every experiment should consume them: loaded, then deduplicated."""
+    records = load_records(path)
+    drop = duplicates_to_drop(records)
+    return [r for i, r in enumerate(records) if i not in drop]
 
 
 def featurize(records: list[dict]) -> tuple[np.ndarray, np.ndarray]:

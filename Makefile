@@ -1,4 +1,4 @@
-.PHONY: install dev lint test clean help
+.PHONY: install dev lint test validate clean help
 .DEFAULT_GOAL := help
 
 # Variables
@@ -39,6 +39,9 @@ lint: ## Run linting and formatting (Python + Node.js)
 
 test: ## Run Python tests
 	. .venv/bin/activate && pytest
+
+validate: ## Validate a dataset (usage: make validate DATA=ml/data/own_v2.json)
+	. .venv/bin/activate && python -m ml.validation $(DATA)
 
 format: ## Format all code (Python + Node.js)
 	@echo "Formatting Python code with ruff..."
