@@ -85,19 +85,20 @@ Produced by `ml/datasets/hagrid.py` (manifest: `ml/data/hagrid_landmarks_v1/mani
 > Collection in progress: this section describes the protocol. Statistics are added once the planned sessions are recorded.
 
 ### Motivation
-The only data captured in the app's real deployment condition — live webcam, in-browser MediaPipe (VIDEO mode, GPU delegate). Used to measure how a model trained on HaGRID's photos transfers to actual use (protocol P3), and possibly for fine-tuning.
+The only data captured in the app's real deployment condition — live webcam, in-browser MediaPipe (VIDEO mode, GPU delegate). Used only to measure how a model trained on HaGRID's photos transfers to actual use (protocol P3) — never as training data: HaGRID already covers far more people and conditions than the author's hands could add.
 
 ### Composition (planned)
 - One contributor: the author. Consequently it cannot measure generalization to other people — that is `hagrid_landmarks_v1`'s role.
 - The same 9 labels as `hagrid_landmarks_v1`; `no_gesture` additionally includes relaxed, curled and mid-transition hands, and pinches (which the app handles with geometry, not this model).
-- ≥ 5 recording sessions on different days and lighting conditions; both hands, varied distances and positions.
+- 2 recording sessions in the conditions the app is actually played in (own room, own webcam, usual distance); both hands, varied positions. Representative rather than artificially varied conditions.
 
 ### Collection process
 Recorded with the `/collect` dev page (`frontend/src/components/DatasetCollector.tsx`), which runs the production MediaPipe pipeline. Each Record click captures a burst of 20 consecutive frames. Every record carries `session_id`, `camera` (device name), `resolution` (as granted by the browser), and `lighting` (`daylight`, `artificial`, `dim` or `backlit`). Schema: see `ml/data.py`.
 
 ### Splitting
-Whole sessions are held out for testing — frames from one session share background, light and camera position, so splitting them across train and test would leak. Within a session, frames are grouped by recording burst.
+None needed: the whole dataset is a test set and is never trained on, so it cannot leak into training. Sessions are still tagged, so results can be broken down by session and lighting, and so a train/test split by session remains possible if fine-tuning is tried later.
 
 ### Known limitations
 - Single person, single movement style, few cameras.
+- Held poses only: transitions between gestures are recorded separately in Phase 1 (continuous sessions).
 - Records from the earlier `gestures_v1` export (pre-v2, no session) cannot be used in session-disjoint evaluation; validation flags them.
