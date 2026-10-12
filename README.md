@@ -1,5 +1,7 @@
 # AirKeys
 
+[![CI](https://github.com/anastber/air-keys/actions/workflows/ci.yml/badge.svg)](https://github.com/anastber/air-keys/actions/workflows/ci.yml)
+
 **A camera-based gesture instrument that runs entirely in the browser** — [live demo](https://air-keys-delta.vercel.app/).
 
 Eight hand gestures each play a fixed note of a one-octave scale, so you can play real melodies (the in-app Songs tab has a few). You can also teach it gestures of your own. Hand tracking, gesture recognition and audio all run client-side: no account, no setup, nothing sent to a server.
