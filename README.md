@@ -2,7 +2,9 @@
 
 **Camera-Based Gesture Instrument**
 
-AirKeys turns your webcam into a musical instrument. Eight gestures — fist, point, peace, open palm, pinch, OK sign, rock on, call me — each always play the same fixed note, laid out as a one-octave diatonic scale (do through do), so cycling through them plays an actual, reproducible melody instead of an approximate one (see the in-app Songs tab for ready-made tunes). Everything — hand tracking, gesture recognition, and audio — runs client-side, in your browser, with no account and no setup. You can also teach it a gesture of your own, trained live on your own hand, private to your browser; on top of that, three of the eight (OK sign, rock on, call me) are classified by a small neural net *I* trained offline on a dataset I collected myself (see [Self-trained gesture classifier](#self-trained-gesture-classifier) below).
+AirKeys turns your webcam into a musical instrument. Eight hand gestures each play a fixed note of a one-octave scale, so you can play real melodies (the in-app Songs tab has a few). You can also teach it gestures of your own.
+
+Everything — hand tracking, gesture recognition, and audio — runs in your browser, with no account and no setup. Three of the gestures are recognized by a small neural net I trained myself (see [Self-trained gesture classifier](#self-trained-gesture-classifier)).
 
 ## How it works
 
@@ -18,7 +20,7 @@ Webcam --> MediaPipe (21 landmarks + pretrained gesture)  ---\
 - **Pinch**: not a model at all — a plain thumb-to-index-fingertip distance check. Geometry generalizes to any hand by construction, so this one didn't need ML.
 - **Self-trained classifier**: OK sign, rock on, and call me are classified by a small MLP trained offline on landmark data I collected and labeled myself — a real train/test split, a confusion matrix, the works. Ships with the app; no per-visitor setup. Details and results below.
 - **Personalization**: teach it a gesture of your own and it's classified by k-nearest-neighbors against samples you record, right there in the training panel. No training step beyond recording — a sample is added, that's it. Everything stays in your browser's `localStorage`; nothing is sent to a server.
-- **Rule engine**: whichever gesture wins (your taught gestures take priority, then the self-trained model, then pinch, then the canned poses) is mapped to a musical action. The 8 always-available gestures each play a *fixed* scale degree (do through do — see the Songs tab for melodies that use only this range), so the same shape always sounds the same note; hand height is repurposed as an optional octave shift rather than continuous pitch, widen a gesture's octave range in the Rules tab to bring that back. Taught gestures keep the original continuous height-to-pitch behavior. This mapping is editable live in the UI, not fixed in code.
+- **Rule engine**: whichever gesture wins (taught gestures first, then the self-trained model, then pinch, then the canned poses) is mapped to a musical action — editable live in the UI, not fixed in code. See [Playing a melody](#playing-a-melody) for the default mapping.
 - **Audio**: Tone.js synthesizes the result.
 
 ## Why it's built this way — a case study in getting this wrong first
@@ -39,18 +41,16 @@ The backend is now a stub — it doesn't do any gesture work at all. What it's u
 
 MediaPipe's pretrained recognizer and the client-side kNN cover 5+N poses without me training anything myself. To have an actual supervised-learning pipeline in this project — data collection, feature engineering, a real held-out evaluation — I added 3 more poses (`ok_sign`, `rock_on`, `call_me`) classified by a small MLP I trained offline, plus a `no_gesture` background class so it doesn't fire on a resting hand.
 
-**Data**: a temporary dev tool (`/collect`, `DatasetCollector.tsx`) runs the exact same in-browser MediaPipe pipeline used at inference time and lets me record labeled landmark samples, exported as JSON. 2,120 samples total across the 4 classes, both hands, varying distance/rotation/position across ~15-19 separate recording bursts per class.
+**Data**: recorded with the `/collect` dev page (`DatasetCollector.tsx`), which runs the exact same in-browser MediaPipe pipeline used at inference time and exports labeled landmark samples as JSON (`gestures_v1.json`). 2,120 samples total across the 4 classes, both hands, varying distance/rotation/position across ~15-19 separate recording bursts per class. (`/collect` has since been extended to 9 classes and per-session tagging for the next dataset — see [Datasets](#datasets).)
 
-**Catching a leakage bug**: my first pass split samples into train/test *per frame*, and got 100% accuracy on both a RandomForest baseline and the MLP — a result to be suspicious of, not proud of. Each "recording" burst captures ~20 near-identical consecutive frames, so a per-frame random split put frames from the same burst on both sides of the split; the model was partly being tested on near-duplicates of its own training data. The fix (`ml/train.py::assign_recording_bursts` + `group_stratified_split`): group samples by recording burst (same label, no >2s gap) and hold out whole bursts, never splitting one across train and test.
-
-**Real held-out results**, after the fix:
+**Held-out results** (whole recording bursts are held out, so near-identical consecutive frames never end up on both sides of the split):
 
 | Model | Held-out accuracy | Notes |
 |---|---|---|
 | RandomForest (baseline) | 96.6% | Confusion mainly between `ok_sign` and `no_gesture` |
 | MLP, hidden layers (32, 16) — **deployed** | 99.8% | See `ml/experiments/confusion_matrix.png` |
 
-Believable, not suspicious: these are 4 visually distinct static poses from one recording session, not in-the-wild gesture recognition — a harder, noisier problem this pipeline doesn't yet attempt.
+**Caveat: every sample comes from one person (me), in one recording session.** These numbers measure how well the model recognizes *my* hand on 4 distinct static poses, not anyone's. The [roadmap](ROADMAP.md) re-evaluates it on thousands of other people's hands (HaGRID, protocol P2); this section will be updated with those results, which are expected to be lower.
 
 **Feature engineering**: the same wrist-centered, hand-span-scaled, handedness-mirrored normalization already used by the client-side kNN (`lib/customGestures.ts::normalizeLandmarks`), ported to Python (`ml/features.py`) so train-time and inference-time preprocessing stay identical.
 
@@ -66,15 +66,6 @@ The next stage of the ML work ([ROADMAP.md](ROADMAP.md)) evaluates models on peo
 - **`own_v2`** — the author's own recordings through `/collect`, tagged by session, camera and lighting: the only data captured in real webcam conditions.
 
 Every dataset is checked before use (`make validate DATA=<file>`): schema, subject leakage across splits, class balance, duplicates and landmark quality, with the file's SHA-256 identifying the exact version. Neither dataset is committed to git.
-
-## Features
-
-- **Real-time hand tracking** — MediaPipe, both hands, fully client-side
-- **Zero-setup base gestures** — pinch, fist, open palm, point, peace, thumbs up all work on page load
-- **Self-trained gesture classifier** — OK sign, rock on, call me, classified by an MLP trained offline with a real held-out evaluation (96.6%/99.8% accuracy — see above)
-- **Playable melodies** — the 8 always-available gestures form a fixed one-octave diatonic scale; the Songs tab has gesture sequences for a few famous tunes
-- **Personal gestures** — teach a new pose in ~20 samples, classified by kNN, private to your browser
-- **Rule-based gesture-to-music mapping** — what each gesture plays is editable live, not hardcoded
 
 ## Tech Stack
 
@@ -135,13 +126,7 @@ Every dataset is checked before use (`make validate DATA=<file>`): schema, subje
 make dev
 ```
 
-Starts the frontend at http://localhost:3000 (where everything actually runs) and the backend stub at http://localhost:8000.
-
-```bash
-make lint      # ruff + ESLint
-make format    # ruff format
-make help      # all available commands
-```
+Starts the frontend at http://localhost:3000 (where everything actually runs) and the backend stub at http://localhost:8000. `make help` lists all commands.
 
 ## Playing a melody
 
@@ -165,8 +150,9 @@ Solo project, but every change goes through a pull request:
 - **Tests** cover the ML pipeline (`tests/`); UI changes are still verified by running the app (`make dev`).
 
 ```bash
-make lint   # ruff + ESLint
-make test   # pytest
+make lint     # ruff + ESLint
+make test     # pytest
+make format   # ruff format
 ```
 
 ## License
