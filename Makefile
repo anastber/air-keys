@@ -1,4 +1,4 @@
-.PHONY: install dev lint clean help
+.PHONY: install dev lint test clean help
 .DEFAULT_GOAL := help
 
 # Variables
@@ -36,6 +36,9 @@ lint: ## Run linting and formatting (Python + Node.js)
 	@echo "Linting Node.js code with ESLint..."
 	cd $(FRONTEND_SRC) && $(NPM) run lint
 	@echo "✅ All linting passed!"
+
+test: ## Run Python tests
+	. .venv/bin/activate && pytest
 
 format: ## Format all code (Python + Node.js)
 	@echo "Formatting Python code with ruff..."
