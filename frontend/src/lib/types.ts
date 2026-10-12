@@ -22,3 +22,12 @@ export interface LandmarkData {
   hands: HandData[];
   error?: string;
 }
+
+// The active webcam, as reported by the browser once the stream starts.
+// Recorded with collected samples so evaluation can be broken down by
+// camera (see components/DatasetCollector.tsx).
+export interface CameraInfo {
+  label: string;
+  width: number;
+  height: number;
+}

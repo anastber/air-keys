@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { GestureRecognizer } from '@mediapipe/tasks-vision';
 import { loadGestureRecognizer, recognizeFrame } from '@/lib/gestureRecognition';
 import { gestureEmoji } from '@/lib/gestureIcons';
-import type { LandmarkData } from '@/lib/types';
+import type { CameraInfo, LandmarkData } from '@/lib/types';
 
 // Right hand reads ink, left reads the accent plum — matches the app's
 // palette instead of literal traffic-light red/blue.
@@ -27,14 +27,25 @@ interface WebcamLandmarksProps {
   // status pills and overlays positioned over the video however it likes —
   // this component owns no chrome of its own, just the feed.
   onStatusChange?: (status: StageStatus) => void;
+  // Fires once the webcam stream starts, with the device name and the
+  // resolution the browser actually granted (not just the one requested).
+  onCameraInfo?: (info: CameraInfo) => void;
 }
 
-const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks, onStatusChange }) => {
+const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({
+  onLandmarks,
+  onStatusChange,
+  onCameraInfo,
+}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const recognizerRef = useRef<GestureRecognizer | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastVideoTimeRef = useRef(-1);
+  // Read through a ref so a new callback identity doesn't recreate
+  // startWebcam, which would restart the camera.
+  const onCameraInfoRef = useRef(onCameraInfo);
+  onCameraInfoRef.current = onCameraInfo;
 
   const [isModelReady, setIsModelReady] = useState(false);
   const [isWebcamActive, setIsWebcamActive] = useState(false);
@@ -86,6 +97,14 @@ const WebcamLandmarks: React.FC<WebcamLandmarksProps> = ({ onLandmarks, onStatus
         videoRef.current.play();
         setIsWebcamActive(true);
         setError(null);
+
+        const [track] = stream.getVideoTracks();
+        const settings = track.getSettings();
+        onCameraInfoRef.current?.({
+          label: track.label || 'unknown camera',
+          width: settings.width ?? 0,
+          height: settings.height ?? 0,
+        });
       }
     } catch (error) {
       setError('Failed to access webcam: ' + String(error));
