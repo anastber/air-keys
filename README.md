@@ -147,11 +147,11 @@ Solo project, but every change goes through a pull request:
 - **One branch per task**, named by type: `feat/`, `fix/`, `refactor/`, `docs/`, `chore/`, `test/`, or `exp/` for ML experiments (e.g. `feat/hagrid-extraction`). Tasks map to items in [ROADMAP.md](ROADMAP.md).
 - **Pull request into `main`**, squash-merged once CI (lint + tests) passes.
 - **Commit messages**: short, imperative, in English (`Add subject-disjoint split`, not `added split`).
-- **Tests** cover the ML pipeline (`tests/`); UI changes are still verified by running the app (`make dev`).
+- **Tests** cover the ML pipeline (`tests/`) and Python/TypeScript parity — the browser must compute exactly what the offline evaluation measured (`frontend/src/lib/parity.test.ts`); UI changes are still verified by running the app (`make dev`).
 
 ```bash
 make lint     # ruff + ESLint
-make test     # pytest
+make test     # pytest + vitest
 make format   # ruff format
 ```
 

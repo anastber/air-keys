@@ -55,3 +55,8 @@ jobs:
       run: |
         cd frontend
         npm run lint
+
+    - name: Run tests (Python/TypeScript parity)
+      run: |
+        cd frontend
+        npm test

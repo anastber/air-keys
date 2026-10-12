@@ -102,7 +102,7 @@ Known limitation, stated up front: HaGRID consists of still photos, not video, s
 - [x] Candidate models in one registry (`ml/models.py`: logistic regression, kNN, random forest, MLP), plus the deployed MLP reloaded from its exported weights and run exactly as the frontend does (same forward pass, threshold and background class — tested against sklearn)
 - [x] Protocols P1–P3 (`ml/protocols.py`) and grouped 5-fold CV on HaGRID training subjects for model selection. HaGRID's val split is reserved for Phase 1 calibration. `own_v2` is test-only, so P3 needs no own-data split; its CIs resample recording bursts.
 - [x] Single entry point: `make eval PROTOCOL=p1 MODEL=mlp` → validates the datasets, then writes `metrics.json`, `report.md` and a confusion matrix to `ml/experiments/<date>-<protocol>-<model>/`, with bootstrap 95 % CIs over subjects, per-class metrics, git commit and the command that reproduces the run.
-- [ ] Add Python ↔ TypeScript **feature parity test** on fixture landmarks (`ml/features.py` vs `lib/customGestures.ts::normalizeLandmarks`).
+- [x] Add Python ↔ TypeScript **feature parity test** on fixture landmarks (`ml/features.py` vs `lib/customGestures.ts::normalizeLandmarks`), extended to the deployed MLP's forward pass (`ml/models.py` vs `lib/trainedGestures.ts`) — shared fixture `tests/fixtures/parity.json`, run in CI on both sides.
 
 ### 0.5 Re-baseline existing models
 - [ ] Evaluate the current deployed MLP under **P2** — the honest version of today's 99.8 %.

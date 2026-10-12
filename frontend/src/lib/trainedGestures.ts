@@ -19,12 +19,12 @@ import type { Landmark } from '@/lib/types';
 // forced to pick one of the real classes every frame.
 const BACKGROUND_LABEL = 'no_gesture';
 
-interface MlpLayer {
+export interface MlpLayer {
   weights: number[][]; // [inputDim][outputDim]
   biases: number[]; // [outputDim]
 }
 
-interface MlpWeights {
+export interface MlpWeights {
   classLabels: string[];
   confidenceThreshold: number;
   layers: MlpLayer[];
@@ -71,7 +71,10 @@ function denseLayer(x: number[], layer: MlpLayer): number[] {
   return y;
 }
 
-function forward(features: number[], model: MlpWeights): number[] {
+// Exported for the Python/TypeScript parity test (lib/parity.test.ts): the
+// offline evaluation (ml/models.py::DeployedMLP) must score exactly what
+// this computes.
+export function forward(features: number[], model: MlpWeights): number[] {
   let activations = features;
   for (let i = 0; i < model.layers.length; i++) {
     const raw = denseLayer(activations, model.layers[i]);

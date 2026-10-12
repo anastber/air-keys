@@ -37,8 +37,9 @@ lint: ## Run linting and formatting (Python + Node.js)
 	cd $(FRONTEND_SRC) && $(NPM) run lint
 	@echo "✅ All linting passed!"
 
-test: ## Run Python tests
+test: ## Run Python and TypeScript tests
 	. .venv/bin/activate && pytest
+	cd $(FRONTEND_SRC) && $(NPM) test
 
 validate: ## Validate a dataset (usage: make validate DATA=ml/data/own_v2.json)
 	. .venv/bin/activate && python -m ml.validation $(DATA)
