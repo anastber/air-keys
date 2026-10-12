@@ -314,6 +314,6 @@ docs/
 ## Out of scope (for now)
 
 - Training a hand-landmark detector from scratch — MediaPipe's is strong, and the project's value lies in what is built on top of it.
-- Server-side inference — client-side inference is a deliberate privacy and latency choice (see the README case study) and stays the default.
+- Server-side inference — client-side inference is a deliberate privacy and latency choice (see [docs/architecture.md](docs/architecture.md)) and stays the default.
 - Recruiting participants for data collection — multi-subject data comes from public datasets; the author's own recordings cover the deployment condition.
 - Collecting images of anyone other than the author.
