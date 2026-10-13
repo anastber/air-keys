@@ -1,0 +1,257 @@
+{
+  "protocol": "p3",
+  "model": "knn",
+  "question": "Does a model learned from HaGRID photos work on live webcam video in the app?",
+  "train_description": "HaGRID train subjects",
+  "test_description": "own_v2 (live webcam)",
+  "date": "2026-10-13",
+  "command": "uv run python -m ml.eval --protocol p3 --model knn",
+  "datasets": {
+    "hagrid_landmarks_v1": {
+      "path": "ml/data/hagrid_landmarks_v1/records.jsonl",
+      "sha256": "d5db335e537d9a85b401307a1c6cfbbefbd01ae42be33a88d41fdd05fdebdb33",
+      "records_raw": 12495,
+      "records_used": 12485,
+      "duplicates_removed": 10
+    },
+    "own_v2": {
+      "path": "ml/data/own_v2.json",
+      "sha256": "86b72fad77f7508233ee33c113a5606046580b4f4bb5c8c43c757a56919eff7e",
+      "records_raw": 4680,
+      "records_used": 4680,
+      "duplicates_removed": 0
+    }
+  },
+  "seed": 0,
+  "metrics": {
+    "accuracy": 0.8504273504273504,
+    "macro_f1": 0.8223591816176852,
+    "per_class": {
+      "call_me": {
+        "precision": 0.9931972789115646,
+        "recall": 0.9521739130434783,
+        "f1": 0.9722530521642619,
+        "support": 460
+      },
+      "fist": {
+        "precision": 0.7160686427457098,
+        "recall": 0.9978260869565218,
+        "f1": 0.8337874659400545,
+        "support": 460
+      },
+      "no_gesture": {
+        "precision": 0.7321428571428571,
+        "recall": 0.06212121212121212,
+        "f1": 0.11452513966480447,
+        "support": 660
+      },
+      "ok_sign": {
+        "precision": 0.8590225563909775,
+        "recall": 0.9934782608695653,
+        "f1": 0.9213709677419355,
+        "support": 460
+      },
+      "open_palm": {
+        "precision": 0.8210332103321033,
+        "recall": 0.967391304347826,
+        "f1": 0.8882235528942116,
+        "support": 460
+      },
+      "peace": {
+        "precision": 0.8417508417508418,
+        "recall": 1.0,
+        "f1": 0.9140767824497258,
+        "support": 500
+      },
+      "point": {
+        "precision": 0.7012195121951219,
+        "recall": 1.0,
+        "f1": 0.8243727598566308,
+        "support": 460
+      },
+      "rock_on": {
+        "precision": 1.0,
+        "recall": 0.92,
+        "f1": 0.9583333333333334,
+        "support": 500
+      },
+      "thumbs_up": {
+        "precision": 0.9498680738786279,
+        "recall": 1.0,
+        "f1": 0.9742895805142084,
+        "support": 720
+      }
+    },
+    "labels": [
+      "call_me",
+      "fist",
+      "no_gesture",
+      "ok_sign",
+      "open_palm",
+      "peace",
+      "point",
+      "rock_on",
+      "thumbs_up"
+    ],
+    "confusion_matrix": [
+      [
+        438,
+        20,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0
+      ],
+      [
+        0,
+        459,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        3,
+        161,
+        41,
+        74,
+        94,
+        94,
+        157,
+        0,
+        36,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        457,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        15,
+        0,
+        445,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        500,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        460,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        38,
+        460,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        720,
+        0
+      ]
+    ],
+    "ci95": {
+      "accuracy": [
+        0.7949975728155341,
+        0.8993959692809653
+      ],
+      "macro_f1": [
+        0.776561617625803,
+        0.8539504383815452
+      ]
+    },
+    "accuracy_by_handedness": {
+      "Left": 0.8681499793984343,
+      "Right": 0.8313359964491789
+    },
+    "by_session": {
+      "2026-10-12-svl1": {
+        "lighting": [
+          "artificial"
+        ],
+        "n": 2400,
+        "accuracy": 0.8804166666666666,
+        "gesture_accuracy": 0.9971153846153846,
+        "no_gesture_recall": 0.121875
+      },
+      "2026-10-13-s8lv": {
+        "lighting": [
+          "daylight"
+        ],
+        "n": 2280,
+        "accuracy": 0.8188596491228071,
+        "gesture_accuracy": 0.961340206185567,
+        "no_gesture_recall": 0.0058823529411764705
+      }
+    }
+  },
+  "n_train": 8362,
+  "train_subjects": 6753,
+  "n_test": 4680,
+  "test_groups": 136,
+  "fit_seconds": 0.01,
+  "predict_ms_per_sample": 0.0438,
+  "model_params": {
+    "algorithm": "'auto'",
+    "leaf_size": "30",
+    "metric": "'minkowski'",
+    "metric_params": "None",
+    "n_jobs": "None",
+    "n_neighbors": "5",
+    "p": "2",
+    "weights": "'uniform'"
+  }
+}

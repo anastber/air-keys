@@ -79,7 +79,7 @@ Known limitation, stated up front: HaGRID consists of still photos, not video, s
 
 ### 0.2 Own-data protocol (`own_v2`)
 - [x] Extend the `/collect` record schema with `session_id`, camera / resolution, and a lighting tag.
-- [ ] Record **2 sessions** in the conditions the app is actually played in (own room, own webcam, usual distance), both hands.
+- [x] Record **2 sessions** in the conditions the app is actually played in (own room, own webcam, usual distance), both hands — artificial light and daylight.
 - [ ] Collect **hard negatives** explicitly: half-formed poses, hands at rest, hands holding objects, pinches.
 
 > **Why only 2 sessions.** `own_v2` is a test set only: HaGRID already brings far more variety in people, rooms, light and cameras than a few extra sessions could, so the author's hands add little as *training* data. What HaGRID cannot provide is the deployment condition itself — live webcam video, MediaPipe in VIDEO mode, the author's real setup — and that is what `own_v2` measures. Since it is never trained on, train/test separation is guaranteed by construction; representative conditions matter more than artificially varied ones. Fine-tuning on own data may come back later as an optional experiment, with more sessions.
@@ -111,13 +111,14 @@ Known limitation, stated up front: HaGRID consists of still photos, not video, s
 - [x] Break P1/P2 results down by demographic group (HaGRID's estimated gender, ethnicity, age).
 - [x] Measure inference time per frame for each model — in V8, Chrome's JS engine, with the app's own code paths (`npm run bench`).
 - [x] Update the README with the new numbers (expect P2 to drop — that is the point).
-- [ ] Re-run P3 once `own_v2`'s second session is recorded.
+- [x] Re-run P3 once `own_v2`'s second session is recorded, with results broken down by session.
 
 > **Status — done** (all runs: [`ml/experiments/README.md`](ml/experiments/README.md)).
 > - **CV selects logistic regression** (macro-F1 0.987 ± 0.002); MLP (0.986 ± 0.004), kNN and random forest (0.980) are tied or close, so the simplest model wins.
 > - **P1:** logistic regression 0.980 [0.974, 0.985] on unseen HaGRID subjects (MLP 0.985 [0.980, 0.989] — overlapping, and switching after seeing the test set would defeat its purpose). Uniform across demographic groups (0.97–0.99).
 > - **P2:** the deployed MLP drops from 99.8 % (its author's hand) to **0.719** [0.702, 0.736]; `call_me` false-triggers (precision 0.36). On the same 4-class task, logistic regression scores 0.990.
-> - **P3** (1 session): **0.990 on the 8 gestures** — the photo → webcam shift is small — but `no_gesture` recall is **0.125**: resting, half-formed and pinching hands are taken for `point`, `ok_sign` or `fist`. HaGRID's `no_gesture` only covers natural resting hands. This makes open-set rejection (Phase 1) the priority before replacing the deployed model.
+> - **P3** (2 sessions): **0.980 on the 8 gestures** — the photo → webcam shift is small — but `no_gesture` recall is **0.061**: resting, half-formed and pinching hands are taken for `point`, `ok_sign`, `call_me` or `fist`. HaGRID's `no_gesture` only covers natural resting hands. This makes open-set rejection (Phase 1) the priority before replacing the deployed model.
+> - **Lighting** (session 1 artificial, session 2 daylight): gestures 0.990 → 0.970, `no_gesture` recall 0.125 → 0.000 (logistic regression; other models alike). The gesture drop comes from two single recordings (one `rock_on`, one `call_me`; every other recording is error-free), so it points to a specific pose or angle rather than the lighting itself. Conclusion: results hold across lighting, and rejection fails in both conditions.
 > - **Inference** (V8, per frame): normalization 0.6 µs, logistic regression 2 µs, MLP 6 µs, kNN over the training set 0.9 ms — all far below a 33 ms frame; kNN would also have to ship 8,362 training samples.
 
 **Deliverables:** HaGRID extraction pipeline, `own_v2`, datasheet, evaluation harness, parity test, re-baseline report.
@@ -146,7 +147,7 @@ For an instrument, a wrong note or a late note is worse than a missed gesture. T
 - [ ] **Landmark filtering:** One-Euro filter vs. constant-velocity Kalman filter on landmark coordinates. Tune on training sessions.
 - [ ] **Probability calibration:** temperature scaling on the MLP, fitted on HaGRID validation subjects; reliability diagrams and ECE before/after, on both HaGRID test subjects and own sessions (calibration often degrades under domain shift — worth measuring). Makes thresholds meaningful and comparable across models.
 - [ ] **Decision smoothing:** majority vote over a window, hysteresis (separate on/off thresholds), and an HMM / forward filter over class posteriors with a learned transition matrix.
-- [ ] **Open-set rejection** — *the priority after Phase 0.5: a HaGRID-trained model rejects only 12.5 % of the author's resting/half-formed hands.* Compare max-softmax threshold, energy score, and distance-to-class-centroid for rejecting "unknown" hand shapes. Evaluate with AUROC on held-out hard negatives — HaGRID's unused classes (`four`, `mute`, `three`, …) provide a large, multi-subject source of realistic "other gesture" samples.
+- [ ] **Open-set rejection** — *the priority after Phase 0.5: a HaGRID-trained model rejects only 6 % of the author's resting/half-formed hands (0–12.5 % per session).* Compare max-softmax threshold, energy score, and distance-to-class-centroid for rejecting "unknown" hand shapes. Evaluate with AUROC on held-out hard negatives — HaGRID's unused classes (`four`, `mute`, `three`, …) provide a large, multi-subject source of realistic "other gesture" samples.
 - [ ] **Threshold tuning:** replace the hand-picked thresholds (MediaPipe 0.5, MLP 0.6, pinch 0.06) with values chosen on dev data.
 
 ### Feature

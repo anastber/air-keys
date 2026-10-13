@@ -1,0 +1,135 @@
+{
+  "protocol": "p3",
+  "model": "deployed",
+  "question": "Does a model learned from HaGRID photos work on live webcam video in the app?",
+  "train_description": "none \u2014 deployed weights (author's own recordings, gestures_v1)",
+  "test_description": "own_v2 (live webcam)",
+  "date": "2026-10-13",
+  "command": "uv run python -m ml.eval --protocol p3 --model deployed",
+  "datasets": {
+    "hagrid_landmarks_v1": {
+      "path": "ml/data/hagrid_landmarks_v1/records.jsonl",
+      "sha256": "d5db335e537d9a85b401307a1c6cfbbefbd01ae42be33a88d41fdd05fdebdb33",
+      "records_raw": 12495,
+      "records_used": 12485,
+      "duplicates_removed": 10
+    },
+    "own_v2": {
+      "path": "ml/data/own_v2.json",
+      "sha256": "86b72fad77f7508233ee33c113a5606046580b4f4bb5c8c43c757a56919eff7e",
+      "records_raw": 4680,
+      "records_used": 4680,
+      "duplicates_removed": 0
+    }
+  },
+  "seed": 0,
+  "metrics": {
+    "accuracy": 0.9275641025641026,
+    "macro_f1": 0.9091004278890628,
+    "per_class": {
+      "call_me": {
+        "precision": 0.6330935251798561,
+        "recall": 0.9565217391304348,
+        "f1": 0.7619047619047619,
+        "support": 460
+      },
+      "no_gesture": {
+        "precision": 0.9737609329446064,
+        "recall": 0.9220858895705522,
+        "f1": 0.9472191586576335,
+        "support": 3260
+      },
+      "ok_sign": {
+        "precision": 1.0,
+        "recall": 0.941304347826087,
+        "f1": 0.9697648376259799,
+        "support": 460
+      },
+      "rock_on": {
+        "precision": 0.9935483870967742,
+        "recall": 0.924,
+        "f1": 0.9575129533678757,
+        "support": 500
+      }
+    },
+    "labels": [
+      "call_me",
+      "no_gesture",
+      "ok_sign",
+      "rock_on"
+    ],
+    "confusion_matrix": [
+      [
+        440,
+        20,
+        0,
+        0,
+        0
+      ],
+      [
+        251,
+        3006,
+        0,
+        3,
+        0
+      ],
+      [
+        0,
+        27,
+        433,
+        0,
+        0
+      ],
+      [
+        4,
+        34,
+        0,
+        462,
+        0
+      ]
+    ],
+    "ci95": {
+      "accuracy": [
+        0.892991858399594,
+        0.9595847813901346
+      ],
+      "macro_f1": [
+        0.8548443354459438,
+        0.9513229189537341
+      ]
+    },
+    "accuracy_by_handedness": {
+      "Left": 0.9044087350638649,
+      "Right": 0.9525077674212161
+    },
+    "by_session": {
+      "2026-10-12-svl1": {
+        "lighting": [
+          "artificial"
+        ],
+        "n": 2400,
+        "accuracy": 0.9345833333333333,
+        "gesture_accuracy": 0.9641025641025641,
+        "no_gesture_recall": 0.9203703703703704
+      },
+      "2026-10-13-s8lv": {
+        "lighting": [
+          "daylight"
+        ],
+        "n": 2280,
+        "accuracy": 0.9201754385964912,
+        "gesture_accuracy": 0.9109375,
+        "no_gesture_recall": 0.9237804878048781
+      }
+    }
+  },
+  "n_train": 0,
+  "train_subjects": 0,
+  "n_test": 4680,
+  "test_groups": 136,
+  "fit_seconds": 0.0,
+  "predict_ms_per_sample": 0.0012,
+  "model_params": {
+    "weights_path": "PosixPath('/Users/anas/Developer/air-keys-project/ml/experiments/gesture_mlp_weights.json')"
+  }
+}
