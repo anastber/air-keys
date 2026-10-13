@@ -26,7 +26,7 @@ from sklearn.model_selection import GroupKFold
 
 from ml.data import dataset_sha256, featurize, load_records
 from ml.evaluate import bootstrap_ci, compute_metrics, plot_confusion_matrix
-from ml.models import available_models, build_model
+from ml.models import BACKGROUND_LABEL, available_models, build_model
 from ml.protocols import HAGRID_PATH, OWN_PATH, PROTOCOLS, build_protocol
 from ml.validation import Report, hagrid_attributes, validate
 
@@ -123,6 +123,8 @@ def run_holdout(data, model_name: str) -> tuple[dict[str, Any], np.ndarray, np.n
         hand: float((y_pred[handedness == hand] == y_test[handedness == hand]).mean())
         for hand in sorted(set(handedness))
     }
+    if all(r.get("session_id") for r in data.test):
+        metrics["by_session"] = metrics_by_session(data.test, y_test, y_pred)
     if all(r.get("source") == "hagrid" for r in data.test):
         attributes = hagrid_attributes(data.test)
         if attributes:
@@ -159,6 +161,33 @@ def accuracy_by_group(
                 "n": int((values == value).sum()),
             }
             for value in sorted(set(values))
+        }
+    return out
+
+
+def metrics_by_session(
+    test: list[dict], y_test: np.ndarray, y_pred: np.ndarray
+) -> dict[str, dict[str, Any]]:
+    """Per recording session: overall, gesture-only and rejection accuracy.
+
+    Sessions differ in lighting (own_v2), so comparing them shows whether
+    results hold under other conditions — something the within-session
+    bootstrap can't capture.
+    """
+    sessions = np.array([r["session_id"] for r in test])
+    gesture = y_test != BACKGROUND_LABEL
+    out = {}
+    for session in sorted(set(sessions)):
+        here = sessions == session
+        correct = y_pred[here] == y_test[here]
+        out[session] = {
+            "lighting": sorted(
+                {r["lighting"] for r in test if r["session_id"] == session}
+            ),
+            "n": int(here.sum()),
+            "accuracy": float(correct.mean()),
+            "gesture_accuracy": float(correct[gesture[here]].mean()),
+            "no_gesture_recall": float(correct[~gesture[here]].mean()),
         }
     return out
 
@@ -235,6 +264,20 @@ def write_report(out_dir: Path, result: dict[str, Any]) -> None:
             f"{hand}: {acc:.3f}" for hand, acc in m["accuracy_by_handedness"].items()
         )
         lines += ["", f"Accuracy by handedness — {by_hand}."]
+        if "by_session" in m:
+            lines += [
+                "",
+                "### By recording session",
+                "",
+                "| Session | Lighting | n | Accuracy | Gestures only | `no_gesture` recall |",
+                "|---|---|---:|---:|---:|---:|",
+            ]
+            for session, x in m["by_session"].items():
+                lines.append(
+                    f"| `{session}` | {', '.join(x['lighting'])} | {x['n']} | "
+                    f"{x['accuracy']:.3f} | {x['gesture_accuracy']:.3f} | "
+                    f"{x['no_gesture_recall']:.3f} |"
+                )
         if "accuracy_by_group" in m:
             lines += [
                 "",

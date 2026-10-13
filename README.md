@@ -35,10 +35,10 @@ The shipped MLP was trained on my hand only. Re-evaluated on other people's hand
 | Shipped MLP — my hand (original test) | 99.8 % |
 | Shipped MLP — 1,309 people it never saw | **71.9 %** [70.2, 73.6] |
 | Logistic regression trained on 6,753 HaGRID people, 9 gestures — people it never saw | **98.0 %** [97.4, 98.5] |
-| Same model — my live webcam, the 8 gestures | 99.0 % |
-| Same model — my live webcam, recognizing "no gesture" | **12.5 %** |
+| Same model — my live webcam (2 sessions), the 8 gestures | 98.0 % |
+| Same model — my live webcam (2 sessions), recognizing "no gesture" | **6 %** |
 
-Brackets are bootstrap 95 % confidence intervals over subjects. Generalizing to new hands is solved by training on many people. The open problem is **rejection**: resting or half-formed hands are taken for gestures, which would play wrong notes. That is the next phase of the roadmap; the app keeps the original MLP until then.
+Brackets are bootstrap 95 % confidence intervals over subjects. Webcam results hold across artificial light and daylight. Generalizing to new hands is solved by training on many people. The open problem is **rejection**: resting or half-formed hands are taken for gestures, which would play wrong notes. That is the next phase of the roadmap; the app keeps the original MLP until then.
 
 More detail:
 - [ROADMAP.md](ROADMAP.md) — methodology, plan and progress

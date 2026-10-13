@@ -82,8 +82,6 @@ Produced by `ml/datasets/hagrid.py` (manifest: `ml/data/hagrid_landmarks_v1/mani
 
 ## `own_v2`
 
-> 1 of the 2 planned sessions recorded; statistics below cover it.
-
 ### Motivation
 The only data captured in the app's real deployment condition — live webcam, in-browser MediaPipe (VIDEO mode, GPU delegate). Used only to measure how a model trained on HaGRID's photos transfers to actual use (protocol P3) — never as training data: HaGRID already covers far more people and conditions than the author's hands could add.
 
@@ -92,11 +90,24 @@ The only data captured in the app's real deployment condition — live webcam, i
 | | |
 |---|---|
 | File | `ml/data/own_v2.json` |
-| SHA-256 | `fe1abff90fc9e068d7214d1628f1370f113e922b1921c3df185b004fe216ebb3` |
-| Records | 2,400 (no duplicates) |
-| Sessions | 1 — `2026-10-12-svl1`: artificial light, FaceTime HD camera, 640×480 |
-| Per class | 260 (13 bursts of 20 frames) for each gesture; 320 (16 bursts) for `no_gesture` |
-| Handedness (MediaPipe) | 1,282 right / 1,118 left |
+| SHA-256 | `86b72fad77f7508233ee33c113a5606046580b4f4bb5c8c43c757a56919eff7e` |
+| Records | 4,680 (no duplicates) |
+| Sessions | 2, same FaceTime HD camera at 640×480: `2026-10-12-svl1` (artificial light, 2,400 records) and `2026-10-13-s8lv` (daylight, 2,280 records) |
+| Handedness (MediaPipe) | 2,253 right / 2,427 left |
+
+Samples per class and session:
+
+| Label | Session 1 (artificial) | Session 2 (daylight) |
+|---|---:|---:|
+| `ok_sign` | 260 | 200 |
+| `rock_on` | 260 | 240 |
+| `call_me` | 260 | 200 |
+| `fist` | 260 | 200 |
+| `open_palm` | 260 | 200 |
+| `peace` | 260 | 240 |
+| `point` | 260 | 200 |
+| `thumbs_up` | 260 | 460 |
+| `no_gesture` | 320 | 340 |
 
 Design:
 - One contributor: the author. Consequently it cannot measure generalization to other people — that is `hagrid_landmarks_v1`'s role.
@@ -105,6 +116,8 @@ Design:
 
 ### Collection process
 Recorded with the `/collect` dev page (`frontend/src/components/DatasetCollector.tsx`), which runs the production MediaPipe pipeline. Each Record click captures a burst of 20 consecutive frames. Every record carries `session_id`, `camera` (device name), `resolution` (as granted by the browser), and `lighting` (`daylight`, `artificial`, `dim` or `backlit`). Schema: see `ml/data.py`.
+
+During session 2, the collector's per-class "remove" button — which clears a class across *all* loaded sessions — erased session 1's `thumbs_up` samples. Session 1 was restored from its original export (SHA-256 `fe1abff9…`, unchanged otherwise); session 2's `thumbs_up` was re-recorded, hence its larger count.
 
 ### Splitting
 None needed: the whole dataset is a test set and is never trained on, so it cannot leak into training. Sessions are still tagged, so results can be broken down by session and lighting, and so a train/test split by session remains possible if fine-tuning is tried later.

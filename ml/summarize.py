@@ -25,7 +25,7 @@ PROTOCOL_TITLES = {
     "cv": "Model selection — grouped 5-fold CV on HaGRID training subjects",
     "p1": "P1 — HaGRID test subjects (people never seen in training)",
     "p2": "P2 — deployed MLP on HaGRID test subjects",
-    "p3": "P3 — own_v2, live webcam (1 session)",
+    "p3": "P3 — own_v2, live webcam (2 sessions)",
 }
 
 
@@ -107,6 +107,21 @@ def main() -> None:
                     f"[{r['dir']}]({r['dir']}/report.md) |"
                 )
         lines.append("")
+        if protocol == "p3" and all("by_session" in r["metrics"] for r in rows):
+            lines += [
+                "**P3 by recording session** — whether results hold under other "
+                "lighting:",
+                "",
+                "| Model | Session | Lighting | Gestures only | `no_gesture` recall |",
+                "|---|---|---|---:|---:|",
+            ]
+            for r in rows:
+                for session, x in r["metrics"]["by_session"].items():
+                    lines.append(
+                        f"| `{r['model']}` | `{session}` | {', '.join(x['lighting'])} "
+                        f"| {x['gesture_accuracy']:.3f} | {x['no_gesture_recall']:.3f} |"
+                    )
+            lines.append("")
     lines += [
         "**4-class view:** every class except `ok_sign`, `rock_on` and `call_me` "
         "counted as `no_gesture` — the task the deployed MLP solves, for a like-for-"
