@@ -126,34 +126,52 @@ Known limitation, stated up front: HaGRID consists of still photos, not video, s
 
 ---
 
-## Phase 1 — Temporal stability and note onset
+## Phase 1 — Rejection and temporal stability
 
-> **Question:** Can we cut spurious notes substantially without adding perceptible latency?
+> **Question:** Can the instrument stay silent on hands that aren't playing a gesture, then cut spurious notes without adding perceptible latency?
 
-For an instrument, a wrong note or a late note is worse than a missed gesture. Today every frame is classified independently.
+For an instrument, a wrong note or a late note is worse than a missed gesture. Phase 0 showed where wrong notes come from first: a HaGRID-trained model recognizes the 8 gestures on live webcam (0.980) but rejects only 6 % of resting, half-formed or pinching hands. Rejection therefore comes before temporal smoothing.
 
-### Data
-- [ ] HaGRID's still photos cannot evaluate temporal behavior, so this phase uses the author's own recordings: **continuous sessions** (30–60 s) playing scripted sequences (e.g. the Songs tab melodies), with timestamped ground-truth labels for each segment (annotated after the fact with a simple labeling tool on the landmark stream). Sessions are split session-disjoint.
+### 1.1 Rejection
+- [x] **Negatives from HaGRID.** Classes the app doesn't use, triaged by role in `ml/datasets/hagrid_labels.json` (v2) before any experiment, from a visual check of each class:
+  - *negative* (trained on): `dislike`, `four`, `three`, `three2`, `grabbing`, `grip`, `little_finger`, `thumb_index` — `grabbing` and `grip` are close to the half-formed and pinching hands that fail today;
+  - *negative_heldout* (never trained on — tests rejection of unseen shapes): `middle_finger`, `three3`, `three_gun`;
+  - *variant* (test only — one of the app's gestures seen another way, so labeling it "no gesture" would teach the model to reject its own gestures): `stop`, `stop_inverted` → `open_palm`, `peace_inverted` → `peace`, `mute` → `point`;
+  - excluded: `two_up`, `two_up_inverted` and HaGRID v2's `point` (ambiguous), two-handed classes.
+
+  Extracted as `hagrid_negatives_v1` (7,648 hands, 6,609 subjects) and `hagrid_variants_v1` (556 hands, test only) — see the [datasheet](docs/datasheet.md). No subject appears in more than one split across the three HaGRID datasets.
+- [ ] **Methods.** (a) negatives added to `no_gesture` in training; (b) a rejection score on top of the classifier — max-softmax threshold, energy score, distance to class centroids; (c) both. Thresholds tuned on HaGRID's val split, never on a test set.
+- [ ] **Evaluation.** Gesture accuracy on HaGRID test subjects (P1) and live webcam (P3); rejection of held-out negatives (AUROC, and rejection rate at a fixed gesture recall); `no_gesture` recall on own recordings; variants still recognized as their gesture.
+- [ ] **Target** (provisional): own-webcam `no_gesture` recall from 0.06 to ≥ 0.80, with gesture accuracy ≥ 0.95 on both P1 and P3.
+
+### 1.2 Calibration and thresholds
+- [ ] **Probability calibration:** temperature scaling fitted on HaGRID validation subjects; reliability diagrams and ECE before/after, on HaGRID test subjects and own sessions (calibration often degrades under domain shift — worth measuring). Makes rejection thresholds meaningful.
+- [ ] **Threshold tuning:** replace the hand-picked thresholds (MediaPipe 0.5, MLP 0.6, pinch 0.06) with values chosen on dev data.
+
+### 1.3 Ship the new model
+- [ ] If 1.1–1.2 meet the target: replace the shipped MLP — and possibly MediaPipe's canned-gesture classification — with one 9-class model, exported like the current MLP and covered by the parity test. Model card with its evaluation.
+
+### 1.4 Temporal stability
+
+**Data**
+- [ ] HaGRID's still photos cannot evaluate temporal behavior, so this uses the author's own recordings: **continuous sessions** (30–60 s) playing scripted sequences (e.g. the Songs tab melodies), with timestamped ground-truth labels for each segment (annotated after the fact with a simple labeling tool on the landmark stream). Needs a continuous recording mode in `/collect`. Sessions are split session-disjoint.
 - [ ] Limitation, documented in the report: temporal parameters are tuned on one person's movement style.
 
-### Metrics
+**Metrics**
 - [ ] **False triggers per minute** (note-on events not matching ground truth).
 - [ ] **Onset latency**: time between ground-truth gesture start and note-on (median and p95, in ms).
 - [ ] **Missed onsets** rate.
 - [ ] Plotted as a trade-off curve: every smoothing method is a point on a latency / false-trigger plane.
 
-### Experiments
-- [ ] **Baseline:** current per-frame argmax.
+**Experiments**
+- [ ] **Baseline:** per-frame argmax with the 1.1 rejection.
 - [ ] **Landmark filtering:** One-Euro filter vs. constant-velocity Kalman filter on landmark coordinates. Tune on training sessions.
-- [ ] **Probability calibration:** temperature scaling on the MLP, fitted on HaGRID validation subjects; reliability diagrams and ECE before/after, on both HaGRID test subjects and own sessions (calibration often degrades under domain shift — worth measuring). Makes thresholds meaningful and comparable across models.
 - [ ] **Decision smoothing:** majority vote over a window, hysteresis (separate on/off thresholds), and an HMM / forward filter over class posteriors with a learned transition matrix.
-- [ ] **Open-set rejection** — *the priority after Phase 0.5: a HaGRID-trained model rejects only 6 % of the author's resting/half-formed hands (0–12.5 % per session).* Compare max-softmax threshold, energy score, and distance-to-class-centroid for rejecting "unknown" hand shapes. Evaluate with AUROC on held-out hard negatives — HaGRID's unused classes (`four`, `mute`, `three`, …) provide a large, multi-subject source of realistic "other gesture" samples.
-- [ ] **Threshold tuning:** replace the hand-picked thresholds (MediaPipe 0.5, MLP 0.6, pinch 0.06) with values chosen on dev data.
 
-### Feature
+**Feature**
 - [ ] Cleaner playing, plus a "responsiveness" control in the UI that moves along the measured trade-off curve.
 
-**Done when:** a method dominates the baseline on the trade-off curve (target: ≥ 50 % fewer false triggers at ≤ +30 ms median latency), and is deployed with calibrated thresholds.
+**Done when:** rejection meets the 1.1 target and ships; then a smoothing method dominates the baseline on the trade-off curve (target: ≥ 50 % fewer false triggers at ≤ +30 ms median latency).
 
 ---
 
@@ -278,7 +296,7 @@ This phase gives the backend its role. It is the only phase that involves other 
 
 ```
 Phase 0 (evaluation foundations)
-   ├──> Phase 1 (temporal stability) ──> Phase 2 (dynamic gestures) ──> Phase 5 (pixel vision)
+   ├──> Phase 1 (rejection, temporal) ──> Phase 2 (dynamic gestures) ──> Phase 5 (pixel vision)
    ├──> Phase 3 (few-shot metric learning)
    └──> Phase 4 (continuous control)
                                     all ──> Phase 6 (data loop & lifecycle)
