@@ -35,6 +35,23 @@ def test_label_config_maps_every_class_to_a_label_and_archive():
         assert spec["archive"].startswith("https://")
 
 
+def test_label_config_roles_are_consistent():
+    config = load_label_config()
+    roles = {spec["role"] for spec in config["classes"].values()}
+    assert roles <= {"gesture", "negative", "negative_heldout", "variant"}
+    gesture_labels = {
+        spec["label"]
+        for spec in config["classes"].values()
+        if spec["role"] == "gesture"
+    }
+    for spec in config["classes"].values():
+        if spec["role"].startswith("negative"):
+            assert spec["label"] == "no_gesture"
+        if spec["role"] == "variant":
+            assert spec["label"] in gesture_labels - {"no_gesture"}
+    assert not set(config["excluded"]) & set(config["classes"])
+
+
 def test_target_hands_ignores_other_labels():
     ann = annotation("u", ["no_gesture", "ok"])
     ann["hand_landmarks"] = [[[0.0, 0.0]], [[0.5, 0.5]]]
@@ -66,6 +83,15 @@ def test_sampling_skips_images_without_exactly_one_target_hand():
     }
     samples = sample_images(annotations, "ok", "test", n=10, max_per_user=1, seed=0)
     assert [s.image_id for s in samples] == ["single"]
+
+
+def test_sampling_skips_images_without_a_subject():
+    annotations = {
+        "known": annotation("u1", ["ok"]),
+        "unknown": annotation(None, ["ok"]),
+    }
+    samples = sample_images(annotations, "ok", "train", n=10, max_per_user=1, seed=0)
+    assert [s.image_id for s in samples] == ["known"]
 
 
 def test_sampling_is_deterministic_for_a_seed():
@@ -109,3 +135,29 @@ def test_records_are_consumable_by_the_training_pipeline():
     x, y = featurize([record])
     assert x.shape == (1, 63)
     assert y.tolist() == ["ok_sign"]
+
+
+def test_archive_reads_survive_dropped_connections(monkeypatch):
+    from remotezip import RemoteIOError
+
+    import ml.datasets.hagrid as hagrid
+
+    connections = []
+
+    class FlakyZip:
+        def __init__(self, url):
+            connections.append(url)
+            if len(connections) == 2:
+                raise RemoteIOError("dropped while reconnecting")
+
+        def read(self, name):
+            if len(connections) == 1:
+                raise RemoteIOError("dropped mid-transfer")
+            return b"jpeg"
+
+    monkeypatch.setattr("remotezip.RemoteZip", FlakyZip)
+    monkeypatch.setattr(hagrid.time, "sleep", lambda _: None)
+    reader = hagrid.ArchiveReader("https://example.org/archive.zip")
+    reader._index = {"img": "img.jpg"}
+    assert reader.read("img") == b"jpeg"
+    assert len(connections) == 3

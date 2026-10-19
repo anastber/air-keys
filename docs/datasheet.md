@@ -1,13 +1,15 @@
 # Datasheet — AirKeys gesture datasets
 
-Structure loosely follows *Datasheets for Datasets* (Gebru et al., 2021). This document covers the two datasets used by the ML pipeline (see [ROADMAP.md](../ROADMAP.md), Phase 0):
+Structure loosely follows *Datasheets for Datasets* (Gebru et al., 2021). This document covers the datasets used by the ML pipeline (see [ROADMAP.md](../ROADMAP.md)):
 
 | Dataset | Content | Role |
 |---|---|---|
 | [`hagrid_landmarks_v1`](#hagrid_landmarks_v1) | Hand landmarks extracted from a sample of HaGRID, many subjects | Training + multi-subject test (protocols P1, P2) |
 | [`own_v2`](#own_v2) | Hand landmarks recorded by the author through the app | Deployment-condition test (protocol P3) |
+| [`hagrid_negatives_v1`](#hagrid_negatives_v1-and-hagrid_variants_v1) | HaGRID hand shapes that are none of the app's gestures | Teaching and testing rejection (Phase 1) |
+| [`hagrid_variants_v1`](#hagrid_negatives_v1-and-hagrid_variants_v1) | HaGRID classes showing one of the app's gestures another way | Robustness test (Phase 1) |
 
-Neither dataset is committed to git: both stay in `ml/data/` (gitignored). They are identified by the SHA-256 of their file, which every validation and experiment report records. Datasets are immutable: any change produces a new version.
+No dataset is committed to git: they stay in `ml/data/` (gitignored). They are identified by the SHA-256 of their file, which every validation and experiment report records. Datasets are immutable: any change produces a new version.
 
 Statistics below come from `make validate DATA=<file>` (`ml/validation.py`), computed on the records as experiments consume them (`ml.data.load_dataset`: loaded, then deduplicated).
 
@@ -77,6 +79,55 @@ Produced by `ml/datasets/hagrid.py` (manifest: `ml/data/hagrid_landmarks_v1/mani
 ### Uses
 - Intended: training and evaluating hand-pose classifiers on MediaPipe landmarks, with subject-disjoint evaluation.
 - Not intended: anything identifying or profiling people. Records keep HaGRID's pseudonymous `user_id` only to enforce subject-disjoint splits.
+
+---
+
+## `hagrid_negatives_v1` and `hagrid_variants_v1`
+
+### Motivation
+A HaGRID-trained model rejects only 6 % of the author's resting, half-formed or pinching hands (Phase 0.5): HaGRID's own `no_gesture` class contains natural resting hands only. These two datasets come from the HaGRID classes the app doesn't use, to teach and test rejection without recruiting anyone.
+
+### Triage
+Every unused HaGRID class was assigned a role in `ml/datasets/hagrid_labels.json` (v2) before any experiment, from a visual check of sample images:
+
+| Role | Classes | Label |
+|---|---|---|
+| `negative` — trained on | `dislike`, `four`, `three`, `three2`, `grabbing`, `grip`, `little_finger`, `thumb_index` | `no_gesture` |
+| `negative_heldout` — never trained on, tests rejection of unseen shapes | `middle_finger`, `three3`, `three_gun` | `no_gesture` |
+| `variant` — same hand shape as an app gesture, seen another way; test only | `stop`, `stop_inverted`, `peace_inverted`, `mute` | `open_palm`, `open_palm`, `peace`, `point` |
+| excluded — ambiguous | `two_up`, `two_up_inverted`, `point` (v2) | — |
+| excluded — two-handed | `hand_heart`, `hand_heart2`, `holy`, `take_picture`, `thumb_index2`, `timeout`, `xsign` | — |
+
+Variants matter: labeling a back-of-hand open palm (`stop_inverted`) as "no gesture" would teach the model to reject its own gestures.
+
+### Composition
+
+| | `hagrid_negatives_v1` | `hagrid_variants_v1` |
+|---|---|---|
+| File | `ml/data/hagrid_negatives_v1/records.jsonl` | `ml/data/hagrid_variants_v1/records.jsonl` |
+| SHA-256 | `bd1567d453cfdd878f481012a4be4ae4ee3266e3d4e04535352fe6f0f095a9f5` | `5ad911c1ba75968c2843867d81dc3f76ffe8e23bd3cae945a39635b177df96df` |
+| Records (after deduplication) | 7,650 (7,648) | 556 |
+| Distinct subjects | 6,609 | 441 |
+| Sampling, per class | up to 500 / 100 / 150 train / val / test | 150, test split only |
+
+Extraction success per class ranges from 86 % (`dislike`, `middle_finger`) to 96 % (`three2`); every failure is logged in `failures.jsonl`. Records use the same format as `hagrid_landmarks_v1`, so `hagrid_label` tells a negative's original class apart.
+
+### Collection process
+Same pipeline as `hagrid_landmarks_v1` (`ml/datasets/hagrid.py`, same MediaPipe model, sampling seed and per-subject cap), selected by role:
+
+```bash
+uv run python -m ml.datasets.hagrid --roles negative negative_heldout \
+    --n-train 500 --n-val 100 --n-test 150 --out-dir ml/data/hagrid_negatives_v1
+uv run python -m ml.datasets.hagrid --roles variant \
+    --n-train 0 --n-val 0 --n-test 150 --out-dir ml/data/hagrid_variants_v1
+```
+
+**Subject leakage across datasets:** HaGRID's official split is by subject across all classes, so a subject is on the same side in every dataset. Checked: of 14,031 subjects across the three HaGRID datasets, none appears in more than one split.
+
+### Known limitations
+- **Missing subject IDs.** 6,359 of 38,995 HaGRID training images of `thumb_index` (16 %) have no `user_id`. They are excluded from sampling, since their subject could sit on the other side of the split.
+- **Triage is a judgment call.** It rests on HaGRID's class definitions and a visual check; borderline classes (`two_up`) were excluded rather than forced into a role.
+- **Hard negatives differ from the author's.** HaGRID negatives are deliberate, well-formed gestures; the author's `no_gesture` recordings are relaxed, half-formed or transitional hands. Whether one teaches the other is what Phase 1.1 measures.
 
 ---
 

@@ -1,42 +1,138 @@
 {
-  "version": 1,
-  "description": "HaGRID classes extracted by ml/datasets/hagrid.py, with the project label each one maps to and the archive its images live in. Bump `version` on any change: it is recorded in every extraction manifest.",
+  "version": 2,
+  "description": "HaGRID classes extracted by ml/datasets/hagrid.py: the project label each maps to, its role, and the archive its images live in. Roles \u2014 gesture: one of the app's 9 classes; negative: a hand shape that is none of them, used to teach rejection; negative_heldout: same, but never trained on, to test rejection of unseen shapes; variant: the same hand shape as one of the app's gestures seen another way (back of hand, near the face), test only. Excluded classes are listed with the reason. Bump `version` on any change: it is recorded in every extraction manifest.",
   "classes": {
     "ok": {
       "label": "ok_sign",
-      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/ok.zip"
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/ok.zip",
+      "role": "gesture"
     },
     "rock": {
       "label": "rock_on",
-      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/rock.zip"
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/rock.zip",
+      "role": "gesture"
     },
     "call": {
       "label": "call_me",
-      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/call.zip"
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/call.zip",
+      "role": "gesture"
     },
     "fist": {
       "label": "fist",
-      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/fist.zip"
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/fist.zip",
+      "role": "gesture"
     },
     "palm": {
       "label": "open_palm",
-      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/palm.zip"
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/palm.zip",
+      "role": "gesture"
     },
     "peace": {
       "label": "peace",
-      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/peace.zip"
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/peace.zip",
+      "role": "gesture"
     },
     "one": {
       "label": "point",
-      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/one.zip"
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/one.zip",
+      "role": "gesture"
     },
     "like": {
       "label": "thumbs_up",
-      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/like.zip"
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/like.zip",
+      "role": "gesture"
     },
     "no_gesture": {
       "label": "no_gesture",
-      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/no_gesture.zip"
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/no_gesture.zip",
+      "role": "gesture"
+    },
+    "dislike": {
+      "label": "no_gesture",
+      "role": "negative",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/dislike.zip"
+    },
+    "four": {
+      "label": "no_gesture",
+      "role": "negative",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/four.zip"
+    },
+    "three": {
+      "label": "no_gesture",
+      "role": "negative",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/three.zip"
+    },
+    "three2": {
+      "label": "no_gesture",
+      "role": "negative",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/three2.zip"
+    },
+    "grabbing": {
+      "label": "no_gesture",
+      "role": "negative",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/grabbing.zip"
+    },
+    "grip": {
+      "label": "no_gesture",
+      "role": "negative",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/grip.zip"
+    },
+    "little_finger": {
+      "label": "no_gesture",
+      "role": "negative",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/little_finger.zip"
+    },
+    "thumb_index": {
+      "label": "no_gesture",
+      "role": "negative",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/thumb_index.zip"
+    },
+    "middle_finger": {
+      "label": "no_gesture",
+      "role": "negative_heldout",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/middle_finger.zip"
+    },
+    "three3": {
+      "label": "no_gesture",
+      "role": "negative_heldout",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/three3.zip"
+    },
+    "three_gun": {
+      "label": "no_gesture",
+      "role": "negative_heldout",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid_v2/hagrid_v2_zip/three_gun.zip"
+    },
+    "stop": {
+      "label": "open_palm",
+      "role": "variant",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/stop.zip"
+    },
+    "stop_inverted": {
+      "label": "open_palm",
+      "role": "variant",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/stop_inverted.zip"
+    },
+    "peace_inverted": {
+      "label": "peace",
+      "role": "variant",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/peace_inverted.zip"
+    },
+    "mute": {
+      "label": "point",
+      "role": "variant",
+      "archive": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/hagrid/hagrid_dataset_new_554800/hagrid_dataset/mute.zip"
     }
+  },
+  "excluded": {
+    "two_up": "index and middle together: neither a peace sign nor clearly something else",
+    "two_up_inverted": "same as two_up, back of hand",
+    "point": "index pointing at the camera: ambiguous with the app's upward point",
+    "hand_heart": "two-handed",
+    "hand_heart2": "two-handed",
+    "holy": "two-handed",
+    "take_picture": "two-handed",
+    "thumb_index2": "two-handed",
+    "timeout": "two-handed",
+    "xsign": "two-handed"
   }
 }

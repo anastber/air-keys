@@ -29,7 +29,13 @@ License: HaGRID is distributed under a variant of CC BY-SA 4.0
 repository's license/en_us.pdf.
 
 Usage (from repo root):
+    # the app's 9 gestures (hagrid_landmarks_v1)
     uv run python -m ml.datasets.hagrid --n-train 1000 --n-val 200 --n-test 300
+    # rejection negatives, and gesture variants (test only)
+    uv run python -m ml.datasets.hagrid --roles negative negative_heldout \
+        --n-train 500 --n-val 100 --n-test 150 --out-dir ml/data/hagrid_negatives_v1
+    uv run python -m ml.datasets.hagrid --roles variant \
+        --n-train 0 --n-val 0 --n-test 150 --out-dir ml/data/hagrid_variants_v1
 """
 
 import argparse
@@ -37,6 +43,7 @@ import hashlib
 import json
 import random
 import threading
+import time
 import urllib.request
 from collections import Counter, defaultdict
 from collections.abc import Iterator
@@ -69,6 +76,8 @@ NUM_HANDS = 2
 # are tighter than HaGRID's hand boxes, so this is deliberately loose; the
 # IoU of every kept hand is recorded, so the threshold can be revisited.
 MIN_MATCH_IOU = 0.3
+# Network retries per image before giving up (the run stays resumable).
+READ_ATTEMPTS = 5
 
 BBox = tuple[float, float, float, float]  # normalized (x, y, width, height)
 
@@ -128,10 +137,13 @@ def sample_images(
     most `max_per_user` images each, so the sample favors subject diversity
     over many shots of the same few people. Images with zero or several
     hands carrying the target label are skipped: which hand is "the" sample
-    would be ambiguous.
+    would be ambiguous. So are images without a user_id (some HaGRID classes
+    have them): their subject could be on the other side of the split.
     """
     by_user: dict[str, list[str]] = defaultdict(list)
     for image_id in sorted(annotations):
+        if not annotations[image_id].get("user_id"):
+            continue
         if len(target_hands(annotations[image_id], hagrid_label)) == 1:
             by_user[annotations[image_id]["user_id"]].append(image_id)
 
@@ -274,9 +286,27 @@ class ArchiveReader:
         }
 
     def read(self, image_id: str) -> bytes | None:
+        """One image's bytes, retrying with a fresh connection on network errors.
+
+        The HaGRID server occasionally drops connections mid-transfer; a
+        persistent failure still raises, and the run can be resumed.
+        """
+        from remotezip import RemoteIOError
+
         assert self._index is not None, "call build_index() first"
         name = self._index.get(image_id)
-        return self._archive().read(name) if name else None
+        if name is None:
+            return None
+        for attempt in range(1, READ_ATTEMPTS + 1):
+            try:
+                return self._archive().read(name)
+            except RemoteIOError:
+                if attempt == READ_ATTEMPTS:
+                    raise
+                # Reconnect on the next attempt (the failure may have come
+                # from opening the connection itself, so it may not exist).
+                self._local.__dict__.pop("archive", None)
+                time.sleep(2**attempt)
 
 
 class HandDetector:
@@ -362,7 +392,14 @@ def sha256(path: Path) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--classes", nargs="+", help="HaGRID classes (default: all)")
+    parser.add_argument("--classes", nargs="+", help="HaGRID classes to extract")
+    parser.add_argument(
+        "--roles",
+        nargs="+",
+        default=["gesture"],
+        help="extract every class with these roles in hagrid_labels.json "
+        "(default: gesture); ignored if --classes is given",
+    )
     parser.add_argument("--n-train", type=int, default=1000)
     parser.add_argument("--n-val", type=int, default=200)
     parser.add_argument("--n-test", type=int, default=300)
@@ -375,7 +412,9 @@ def main() -> None:
     import mediapipe as mp
 
     config = load_label_config()
-    classes = args.classes or list(config["classes"])
+    classes = args.classes or [
+        name for name, spec in config["classes"].items() if spec["role"] in args.roles
+    ]
     unknown = set(classes) - set(config["classes"])
     if unknown:
         raise SystemExit(f"Not in {LABEL_CONFIG_PATH.name}: {sorted(unknown)}")
@@ -422,6 +461,8 @@ def main() -> None:
             reader = ArchiveReader(config["classes"][hagrid_label]["archive"])
             reader.build_index()
             for split in SPLITS:
+                if n_per_split[split] == 0:
+                    continue
                 samples = sample_images(
                     fetch_annotations(split, hagrid_label),
                     hagrid_label,
